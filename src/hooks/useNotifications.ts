@@ -62,11 +62,20 @@ export function useNotifications(userId?: string): NotificationHookReturn {
     });
 
     return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+      // Cleanup subscriptions (check if function exists for Expo Go compatibility)
+      if (notificationListener.current && typeof Notifications.removeNotificationSubscription === 'function') {
+        try {
+          Notifications.removeNotificationSubscription(notificationListener.current);
+        } catch (e) {
+          console.log('Could not remove notification subscription:', e);
+        }
       }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+      if (responseListener.current && typeof Notifications.removeNotificationSubscription === 'function') {
+        try {
+          Notifications.removeNotificationSubscription(responseListener.current);
+        } catch (e) {
+          console.log('Could not remove response subscription:', e);
+        }
       }
     };
   }, [userId]);
@@ -101,13 +110,21 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     }
 
     try {
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: EXPO_PROJECT_ID,
-      });
-      token = tokenData.data;
+      // Only try to get token if we have a valid project ID
+      if (EXPO_PROJECT_ID && EXPO_PROJECT_ID !== 'your-project-id') {
+        const tokenData = await Notifications.getExpoPushTokenAsync({
+          projectId: EXPO_PROJECT_ID,
+        });
+        token = tokenData.data;
+      } else {
+        console.log('Push notifications require valid EXPO_PROJECT_ID in .env');
+        console.log('App will work without notifications for testing');
+        return null;
+      }
     } catch (e) {
       console.error('Error getting push token:', e);
-      throw e;
+      console.log('App will continue without push notifications');
+      return null; // Don't throw, just return null
     }
   } else {
     console.log('Push notifications only work on physical devices');

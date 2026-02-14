@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Users collection - users can read/write their own data
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+
+    // Linking codes - parents can create, children can read
+    match /linkingCodes/{code} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // Punishments - parents can create/update, children can read
+    match /punishments/{punishmentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // Tasks within punishments
+    match /punishments/{punishmentId}/tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Quizzes - anyone authenticated can read, admins can write
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+  }
+}

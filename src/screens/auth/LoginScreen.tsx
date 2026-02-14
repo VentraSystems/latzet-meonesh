@@ -93,7 +93,12 @@ export default function LoginScreen({ navigation }: any) {
             style={styles.googleButton}
             onPress={handleGoogleSignIn}
           >
-            <Text style={styles.googleButtonText}>🔐 התחבר עם Google</Text>
+            <View style={styles.googleButtonContent}>
+              <View style={styles.googleLogo}>
+                <Text style={styles.googleLogoText}>G</Text>
+              </View>
+              <Text style={styles.googleButtonText}>התחבר עם Google</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -188,12 +193,36 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#3498DB',
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleLogo: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: '#4285F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  googleLogoText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   googleButtonText: {
-    color: '#3498DB',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#5F6368',
+    fontSize: 16,
+    fontWeight: '600',
   },
   signupLink: {
     marginTop: 24,
