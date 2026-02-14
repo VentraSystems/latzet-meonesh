@@ -86,8 +86,16 @@ export default function ParentHomeScreen({ navigation }: any) {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>שלום הורה! 👋</Text>
-        <Text style={styles.childName}>ילד: {childName || 'טוען...'}</Text>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Text style={styles.settingsIcon}>⚙️</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>שלום הורה! 👋</Text>
+          <Text style={styles.childName}>ילד: {childName || 'טוען...'}</Text>
+        </View>
       </View>
 
       <View style={styles.statusCard}>
@@ -142,11 +150,21 @@ export default function ParentHomeScreen({ navigation }: any) {
         )}
 
         <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={logout}
+          style={styles.settingsButtonSecondary}
+          onPress={() => navigation.navigate('Settings')}
         >
-          <Text style={styles.secondaryButtonText}>🚪 התנתק</Text>
+          <Text style={styles.secondaryButtonText}>⚙️ הגדרות</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Ventra Branding Footer */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          Made with ❤️ by
+        </Text>
+        <Text style={styles.footerBrand}>
+          Ventra Software Systems LTD
+        </Text>
       </View>
     </ScrollView>
   );
@@ -200,6 +218,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#3498DB',
     padding: 20,
     paddingTop: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  settingsButton: {
+    padding: 8,
+    marginLeft: 10,
+  },
+  settingsIcon: {
+    fontSize: 24,
   },
   headerTitle: {
     fontSize: 28,
@@ -317,5 +347,28 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  settingsButtonSecondary: {
+    backgroundColor: '#95A5A6',
+    padding: 18,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  footer: {
+    alignItems: 'center',
+    padding: 20,
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#95A5A6',
+    marginBottom: 4,
+  },
+  footerBrand: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#3498DB',
   },
 });

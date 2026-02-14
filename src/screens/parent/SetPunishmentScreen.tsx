@@ -13,6 +13,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { taskPresets, quizPresets } from '../../data/taskPresets';
+import { notifyNewPunishment } from '../../utils/notifications';
 
 export default function SetPunishmentScreen({ navigation }: any) {
   const [punishmentName, setPunishmentName] = useState('');
@@ -90,7 +91,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
       });
 
       // Create punishment document
-      await addDoc(collection(db, 'punishments'), {
+      const punishmentRef = await addDoc(collection(db, 'punishments'), {
         name: punishmentName,
         parentId: user!.uid,
         childId: linkedUserId,
@@ -99,6 +100,14 @@ export default function SetPunishmentScreen({ navigation }: any) {
         createdAt: new Date(),
         requiredTasksCount: tasks.length,
       });
+
+      // Send push notification to child
+      await notifyNewPunishment(
+        linkedUserId,
+        punishmentName,
+        tasks.length,
+        punishmentRef.id
+      );
 
       Alert.alert('הצלחה! 🎉', 'העונש נוצר והילד יקבל התראה', [
         { text: 'אישור', onPress: () => navigation.goBack() },

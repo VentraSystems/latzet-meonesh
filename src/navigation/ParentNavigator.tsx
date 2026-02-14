@@ -1,9 +1,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ParentHomeScreen from '../screens/parent/ParentHomeScreen';
-import LinkChildScreen from '../screens/parent/LinkChildScreen';
-import SetPunishmentScreen from '../screens/parent/SetPunishmentScreen';
-import TaskApprovalScreen from '../screens/parent/TaskApprovalScreen';
+import ParentHomeScreen from '../screens/Parent/ParentHomeScreen';
+import LinkChildScreen from '../screens/Parent/LinkChildScreen';
+import SetPunishmentScreen from '../screens/Parent/SetPunishmentScreen';
+import TaskApprovalScreen from '../screens/Parent/TaskApprovalScreen';
+import SettingsScreen from '../screens/Parent/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -39,6 +40,14 @@ export default function ParentNavigator() {
         component={TaskApprovalScreen}
         options={{
           title: 'אישור משימות',
+          headerTitleAlign: 'center'
+        }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'הגדרות',
           headerTitleAlign: 'center'
         }}
       />

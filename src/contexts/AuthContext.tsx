@@ -11,6 +11,7 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { UserRole } from '../types';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize push notifications for the current user
+  const { expoPushToken, error: notificationError } = useNotifications(user?.uid);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
@@ -61,6 +65,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return unsubscribe;
   }, []);
+
+  // Log notification errors
+  useEffect(() => {
+    if (notificationError) {
+      console.error('Notification error:', notificationError);
+    }
+  }, [notificationError]);
+
+  // Log when push token is registered
+  useEffect(() => {
+    if (expoPushToken) {
+      console.log('Push token registered:', expoPushToken);
+    }
+  }, [expoPushToken]);
 
   const signUp = async (email: string, password: string, name: string, role: UserRole) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);

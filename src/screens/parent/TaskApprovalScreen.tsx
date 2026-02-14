@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { notifyTaskApproved, notifyTaskRejected } from '../../utils/notifications';
 
 export default function TaskApprovalScreen({ route, navigation }: any) {
   const { punishmentId } = route.params;
@@ -43,13 +44,22 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
           text: 'אשר',
           onPress: async () => {
             try {
-              const updatedTasks = punishment.tasks.map((task: any) =>
-                task.id === taskId ? { ...task, status: 'approved', approvedAt: new Date() } : task
+              const task = punishment.tasks.find((t: any) => t.id === taskId);
+              const updatedTasks = punishment.tasks.map((t: any) =>
+                t.id === taskId ? { ...t, status: 'approved', approvedAt: new Date() } : t
               );
 
               await updateDoc(doc(db, 'punishments', punishmentId), {
                 tasks: updatedTasks,
               });
+
+              // Send notification to child
+              await notifyTaskApproved(
+                punishment.childId,
+                task.title,
+                punishmentId,
+                taskId
+              );
 
               // Check if all tasks are approved
               const allApproved = updatedTasks.every((t: any) => t.status === 'approved');
@@ -83,15 +93,26 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
           text: 'דחה',
           onPress: async (reason) => {
             try {
-              const updatedTasks = punishment.tasks.map((task: any) =>
-                task.id === taskId
-                  ? { ...task, status: 'rejected', rejectedReason: reason || 'המשימה לא בוצעה כראוי' }
-                  : task
+              const task = punishment.tasks.find((t: any) => t.id === taskId);
+              const rejectionReason = reason || 'המשימה לא בוצעה כראוי';
+              const updatedTasks = punishment.tasks.map((t: any) =>
+                t.id === taskId
+                  ? { ...t, status: 'rejected', rejectedReason }
+                  : t
               );
 
               await updateDoc(doc(db, 'punishments', punishmentId), {
                 tasks: updatedTasks,
               });
+
+              // Send notification to child
+              await notifyTaskRejected(
+                punishment.childId,
+                task.title,
+                rejectionReason,
+                punishmentId,
+                taskId
+              );
 
               await loadPunishment();
             } catch (error) {

@@ -7,9 +7,11 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { QuizQuestion } from '../../data/taskPresets';
+import { notifyQuizPassed } from '../../utils/notifications';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Props {
   route: any;
@@ -18,6 +20,7 @@ interface Props {
 
 export default function QuizScreen({ route, navigation }: Props) {
   const { quiz, punishmentId, taskId } = route.params;
+  const { user } = useAuth();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -59,9 +62,49 @@ export default function QuizScreen({ route, navigation }: Props) {
           {
             text: 'אישור',
             onPress: async () => {
-              // Mark task as submitted
-              // This would be handled by Firebase in a real app
-              navigation.goBack();
+              try {
+                // Get punishment document
+                const punishmentDoc = await getDoc(doc(db, 'punishments', punishmentId));
+                if (punishmentDoc.exists()) {
+                  const punishmentData = punishmentDoc.data();
+
+                  // Update task status
+                  const updatedTasks = punishmentData.tasks.map((t: any) =>
+                    t.id === taskId
+                      ? {
+                          ...t,
+                          status: 'submitted',
+                          submittedAt: new Date(),
+                          quizScore: Math.round(percentage),
+                          childNote: `עבר את החידון עם ציון ${Math.round(percentage)}%`
+                        }
+                      : t
+                  );
+
+                  await updateDoc(doc(db, 'punishments', punishmentId), {
+                    tasks: updatedTasks,
+                  });
+
+                  // Get child's name for notification
+                  const childDoc = await getDoc(doc(db, 'users', user!.uid));
+                  const childName = childDoc.exists() ? childDoc.data().name : 'הילד';
+
+                  // Send notification to parent
+                  await notifyQuizPassed(
+                    punishmentData.parentId,
+                    childName,
+                    quiz.title,
+                    Math.round(percentage),
+                    punishmentId,
+                    taskId
+                  );
+                }
+
+                navigation.goBack();
+              } catch (error) {
+                console.error('Error updating quiz task:', error);
+                navigation.goBack();
+              }
             },
           },
         ]

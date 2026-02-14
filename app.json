@@ -24,8 +24,28 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.latzet.meonesh",
-      "supportsRtl": true
+      "supportsRtl": true,
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#3498DB",
+      "androidMode": "default",
+      "androidCollapsedTitle": "לצאת מעונש"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#3498DB",
+          "sounds": ["./assets/notification.wav"]
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },

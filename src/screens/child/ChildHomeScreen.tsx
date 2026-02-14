@@ -9,6 +9,7 @@ export default function ChildHomeScreen({ navigation }: any) {
   const [childName, setChildName] = useState('');
   const [activePunishment, setActivePunishment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [hasShownFreedom, setHasShownFreedom] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -42,6 +43,22 @@ export default function ChildHomeScreen({ navigation }: any) {
 
     return () => unsubscribe();
   }, [user]);
+
+  // Check if punishment was just completed and show Freedom screen
+  useEffect(() => {
+    if (!activePunishment || hasShownFreedom) return;
+
+    const tasks = activePunishment.tasks || [];
+    const allApproved = tasks.length > 0 && tasks.every((t: any) => t.status === 'approved');
+
+    if (allApproved) {
+      // Small delay for better UX
+      setTimeout(() => {
+        setHasShownFreedom(true);
+        navigation.navigate('Freedom', { punishmentId: activePunishment.id });
+      }, 500);
+    }
+  }, [activePunishment, hasShownFreedom, navigation]);
 
   if (loading) {
     return (
@@ -134,6 +151,12 @@ export default function ChildHomeScreen({ navigation }: any) {
               💡 כל משימה שתשלים מקרבת אותך לחופש!
             </Text>
           </View>
+
+          {/* Ventra Branding Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Made with ❤️ by</Text>
+            <Text style={styles.footerBrand}>Ventra Software Systems LTD</Text>
+          </View>
         </>
       ) : (
         <View style={styles.freedomScreen}>
@@ -145,6 +168,12 @@ export default function ChildHomeScreen({ navigation }: any) {
             <Text style={styles.tipsText}>
               זכור: התנהגות טובה עוזרת לך להישאר חופשי!
             </Text>
+          </View>
+
+          {/* Ventra Branding Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Made with ❤️ by</Text>
+            <Text style={styles.footerBrand}>Ventra Software Systems LTD</Text>
           </View>
         </View>
       )}
@@ -365,5 +394,21 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     textAlign: 'center',
     lineHeight: 26,
+  },
+  footer: {
+    alignItems: 'center',
+    padding: 20,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#95A5A6',
+    marginBottom: 4,
+  },
+  footerBrand: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#E74C3C',
   },
 });

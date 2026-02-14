@@ -9,9 +9,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { notifyTaskSubmitted } from '../../utils/notifications';
 
 export default function TasksListScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -67,6 +68,19 @@ export default function TasksListScreen({ navigation }: any) {
       await updateDoc(doc(db, 'punishments', activePunishment.id), {
         tasks: updatedTasks,
       });
+
+      // Get child's name for notification
+      const childDoc = await getDoc(doc(db, 'users', user!.uid));
+      const childName = childDoc.exists() ? childDoc.data().name : 'הילד';
+
+      // Send notification to parent
+      await notifyTaskSubmitted(
+        activePunishment.parentId,
+        childName,
+        selectedTask.title,
+        activePunishment.id,
+        selectedTask.id
+      );
 
       Alert.alert('נשלח! 🎉', 'המשימה נשלחה לאישור ההורה', [
         {
