@@ -8,6 +8,7 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -322,10 +323,16 @@ export default function SettingsScreen({ navigation }: any) {
       </TouchableOpacity>
 
       {/* App Version & Branding */}
-      <Text style={styles.version}>גרסה 1.0.0</Text>
-      <Text style={styles.branding}>
-        Made with ❤️ by Ventra Software Systems LTD
-      </Text>
+      <View style={styles.brandingContainer}>
+        <Text style={styles.version}>גרסה 1.0.0</Text>
+        <Text style={styles.madeWith}>Made with ❤️ by</Text>
+
+        {/* Ventra Logo */}
+        <View style={styles.logoContainer}>
+          <Text style={styles.ventraText}>VENTRA</Text>
+          <Text style={styles.softwareText}>SOFTWARE SYSTEMS LTD</Text>
+        </View>
+      </View>
 
       <View style={styles.bottomSpacing} />
     </ScrollView>
@@ -546,19 +553,38 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  brandingContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
   version: {
     fontSize: 12,
     color: '#BDC3C7',
     textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  branding: {
-    fontSize: 12,
+  madeWith: {
+    fontSize: 11,
+    color: '#95A5A6',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  ventraText: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#3498DB',
-    textAlign: 'center',
-    marginBottom: 10,
+    letterSpacing: 2,
+  },
+  softwareText: {
+    fontSize: 10,
+    color: '#7F8C8D',
+    letterSpacing: 1,
+    marginTop: 2,
   },
   bottomSpacing: {
     height: 40,
