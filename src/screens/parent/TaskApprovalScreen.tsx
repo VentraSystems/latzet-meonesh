@@ -11,11 +11,14 @@ import {
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { notifyTaskApproved, notifyTaskRejected } from '../../utils/notifications';
+import RejectTaskModal from '../../components/RejectTaskModal';
 
 export default function TaskApprovalScreen({ route, navigation }: any) {
   const { punishmentId } = route.params;
   const [punishment, setPunishment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     loadPunishment();
@@ -83,46 +86,43 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
     );
   };
 
-  const handleReject = async (taskId: string) => {
-    Alert.prompt(
-      'דחיית משימה',
-      'למה אתה דוחה את המשימה? (הילד יראה את ההודעה)',
-      [
-        { text: 'ביטול', style: 'cancel' },
-        {
-          text: 'דחה',
-          onPress: async (reason) => {
-            try {
-              const task = punishment.tasks.find((t: any) => t.id === taskId);
-              const rejectionReason = reason || 'המשימה לא בוצעה כראוי';
-              const updatedTasks = punishment.tasks.map((t: any) =>
-                t.id === taskId
-                  ? { ...t, status: 'rejected', rejectedReason }
-                  : t
-              );
+  const handleReject = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setShowRejectModal(true);
+  };
 
-              await updateDoc(doc(db, 'punishments', punishmentId), {
-                tasks: updatedTasks,
-              });
+  const handleRejectSubmit = async (reason: string) => {
+    if (!selectedTaskId) return;
 
-              // Send notification to child
-              await notifyTaskRejected(
-                punishment.childId,
-                task.title,
-                rejectionReason,
-                punishmentId,
-                taskId
-              );
+    try {
+      const task = punishment.tasks.find((t: any) => t.id === selectedTaskId);
+      const rejectionReason = reason || 'המשימה לא בוצעה כראוי';
+      const updatedTasks = punishment.tasks.map((t: any) =>
+        t.id === selectedTaskId
+          ? { ...t, status: 'rejected', rejectedReason }
+          : t
+      );
 
-              await loadPunishment();
-            } catch (error) {
-              Alert.alert('שגיאה', 'לא הצלחנו לדחות את המשימה');
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+      await updateDoc(doc(db, 'punishments', punishmentId), {
+        tasks: updatedTasks,
+      });
+
+      // Send notification to child
+      await notifyTaskRejected(
+        punishment.childId,
+        task.title,
+        rejectionReason,
+        punishmentId,
+        selectedTaskId
+      );
+
+      await loadPunishment();
+    } catch (error) {
+      Alert.alert('שגיאה', 'לא הצלחנו לדחות את המשימה');
+    } finally {
+      setShowRejectModal(false);
+      setSelectedTaskId(null);
+    }
   };
 
   if (loading) {
@@ -199,6 +199,20 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
           </View>
         </View>
       ))}
+
+      <RejectTaskModal
+        visible={showRejectModal}
+        taskTitle={
+          selectedTaskId
+            ? punishment.tasks.find((t: any) => t.id === selectedTaskId)?.title || ''
+            : ''
+        }
+        onCancel={() => {
+          setShowRejectModal(false);
+          setSelectedTaskId(null);
+        }}
+        onSubmit={handleRejectSubmit}
+      />
     </ScrollView>
   );
 }
