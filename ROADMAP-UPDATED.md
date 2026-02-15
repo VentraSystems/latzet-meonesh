@@ -327,33 +327,69 @@
 - [x] Write app description (Hebrew) - IN AFTER-BUILD-GUIDE.md ✅
 - [ ] App Store Optimization (ASO) - NEXT
 
-### Google Play Console Setup 🔄 (CURRENT STEP!)
+### Google Play Console Setup 🔄 (85% COMPLETE!)
 - [x] Account created ✅
 - [x] App created ("לצאת מעונש") ✅
-- [ ] **COMPLETE REQUIRED SECTIONS** (IN PROGRESS):
-  - [ ] **Store Listing** 🔄
-    - [ ] App name: לצאת מעונש
-    - [ ] Short description (80 chars)
-    - [ ] Full description (Hebrew)
-    - [ ] App icon (512x512)
-    - [ ] Screenshots (phone & tablet)
-    - [ ] Feature graphic (1024x500)
-  - [ ] **Content Rating** 🔄
-    - [ ] Fill questionnaire
-    - [ ] Select age: Everyone (4+)
-  - [ ] **Target Audience** 🔄
-    - [ ] Select age range: 6-16
-    - [ ] Parental controls: Yes
-  - [ ] **Data Safety** 🔄
-    - [ ] Data collection: Email, name, tasks
-    - [ ] Data usage: App functionality
-    - [ ] Data security: Encrypted
-  - [ ] **Privacy Policy** 🚨 CRITICAL!
-    - [ ] Need to add URL (see above)
-- [ ] **Upload .aab to Internal Testing** (AFTER sections complete)
-- [ ] Add internal testers
-- [ ] Test on physical Android device
-- [ ] Release to Production
+- [x] Set as Free app ✅
+- [x] Default language: Hebrew ✅
+- 🔄 **COMPLETE REQUIRED SECTIONS** (85% DONE!):
+
+  - 🔄 **Store Listing** (75% DONE!)
+    - [x] App name: לצאת מעונש ✅
+    - [x] Short description (80 chars) ✅
+    - [x] Full description (Hebrew) ✅
+    - [ ] App icon (512x512) - NEXT! 🎨
+    - [ ] Feature graphic (1024x500) - NEXT! 🎨
+    - [ ] Screenshots (phone) - At least 2 needed 📸
+    - [ ] Screenshots (tablet) - Optional
+    - [x] Contact email: support@ventrasystems.com ✅
+    - [x] Website: GitHub repo ✅
+    - [x] Category: Parenting ✅
+
+  - [x] **App Access** ✅
+    - [x] All functionality available without special access ✅
+
+  - [x] **Ads** ✅
+    - [x] Does not contain ads ✅
+
+  - [x] **Content Rating** ✅
+    - [x] Questionnaire completed ✅
+    - [x] Rating: Everyone / PEGI 3 ✅
+    - [x] No violence, sexual content, drugs, etc. ✅
+
+  - [x] **Target Audience** ✅
+    - [x] Age range: 6-8, 9-12, 13-17 ✅
+    - [x] Not primarily for children (family app) ✅
+    - [x] Teacher Approved: Opted out ✅
+
+  - [x] **Data Safety** ✅
+    - [x] Data collection disclosed ✅
+    - [x] Email, names, tasks collected ✅
+    - [x] Data encrypted in transit ✅
+    - [x] Username and password authentication ✅
+    - [x] Delete account URL: DELETE-ACCOUNT page ✅
+    - [x] Committed to Play Families Policy badge ✅
+
+  - [x] **Privacy Policy** ✅
+    - [x] Created PRIVACY-POLICY.md ✅
+    - [x] Pushed to GitHub ✅
+    - [x] GitHub Pages enabled ✅
+    - [x] URL added to Console: https://ventrasystems.github.io/latzet-meonesh/PRIVACY-POLICY ✅
+
+  - [x] **Delete Account URL** ✅
+    - [x] Created DELETE-ACCOUNT.md ✅
+    - [x] Pushed to GitHub ✅
+    - [x] URL: https://ventrasystems.github.io/latzet-meonesh/DELETE-ACCOUNT ✅
+
+- [ ] **REMAINING TASKS:**
+  - [ ] 🎨 Create/upload app icon (512x512 PNG)
+  - [ ] 🎨 Create/upload feature graphic (1024x500)
+  - [ ] 📸 Create/upload screenshots (at least 2)
+  - [ ] ✅ Complete Store Listing section
+  - [ ] 📦 Upload .aab to Internal Testing
+  - [ ] 👥 Add internal testers (optional)
+  - [ ] 📱 Test on physical Android device
+  - [ ] 🚀 Release to Production
 
 ### Apple App Store Setup ⏳ (NEXT)
 - [x] Developer account active ✅
@@ -404,11 +440,73 @@
 
 **Completed Phases:** 1, 2, 2.5 (Security), 3 (100%), 4 (100%), 5 (Push Notifications), 6 (Settings & Polish), 7 (Bug Fixes), 8 (Android & iOS Builds) ✅
 **App Completion:** 100% (Code Complete + Both Builds Complete!) 🎉
-**Current Phase:** Phase 9 - Store Setup & Submission (70% complete)
-**Current Step:** 🔄 **Setting up Google Play Console** (completing required sections)
-**Next Up:** Complete Store Listing → Upload .aab → TestFlight → Launch!
+**Current Phase:** Phase 9 - Store Setup & Submission (85% complete!)
+**Current Step:** 🔄 **Google Play Console - Graphics Section** (need app icon & screenshots)
+**Progress:** 85% of Play Console complete! Just graphics left!
+**Next Session:** Create app icon (512x512) → Take screenshots → Upload .aab → Launch! 🚀
 
-### Latest Updates (Session 6 - Feb 15, 2026 - STORE SETUP PHASE! 🏪):
+### Latest Updates (Session 6 - Feb 15, 2026 - GOOGLE PLAY CONSOLE SETUP! 🏪):
+
+**MAJOR PROGRESS TODAY! 85% of Google Play Console Setup Complete!** 🎉
+
+- ✅ **PRIVACY POLICY CREATED & HOSTED!** 📄
+  - ✅ Comprehensive Hebrew privacy policy (162 lines)
+  - ✅ GDPR, COPPA, Israeli law compliant
+  - ✅ Pushed to GitHub (commit: aa71fa1)
+  - ✅ GitHub Pages enabled and deployed
+  - ✅ Live URL: https://ventrasystems.github.io/latzet-meonesh/PRIVACY-POLICY
+  - ✅ Added to Google Play Console ✅
+
+- ✅ **DELETE ACCOUNT PAGE CREATED!** 🗑️
+  - ✅ Complete account deletion policy (162 lines)
+  - ✅ Hebrew + English versions
+  - ✅ Clear instructions for users
+  - ✅ Pushed to GitHub (commit: 1d87b9e)
+  - ✅ Live URL: https://ventrasystems.github.io/latzet-meonesh/DELETE-ACCOUNT
+  - ✅ Added to Google Play Console ✅
+
+- ✅ **GOOGLE PLAY CONSOLE - 85% COMPLETE!** 🤖
+  - ✅ Repository made public (for GitHub Pages)
+  - ✅ App created: "לצאת מעונש"
+  - ✅ Set as Free app
+  - ✅ Default language: Hebrew
+  - ✅ **App Access section** - Complete ✅
+  - ✅ **Ads section** - Complete (No ads) ✅
+  - ✅ **Content Rating** - Complete (Everyone/PEGI 3) ✅
+    - All questions answered (no violence, no mature content)
+    - Age rating approved
+  - ✅ **Target Audience** - Complete ✅
+    - Ages 6-8, 9-12, 13-17 selected
+    - Not primarily for children (family app)
+    - Teacher Approved: Opted out for faster launch
+  - ✅ **Data Safety** - Complete ✅
+    - Data collection disclosed (email, names, tasks)
+    - Data encrypted in transit (Firebase)
+    - Username/password authentication
+    - Delete account URL provided
+    - Committed to Play Families Policy badge added
+  - ✅ **Store Settings** - Complete ✅
+    - Category: Parenting
+    - Contact email: support@ventrasystems.com
+    - Website: GitHub repository
+  - ✅ **Store Listing** - 75% Complete! 🔄
+    - ✅ App name: לצאת מעונש
+    - ✅ Short description (Hebrew, 80 chars)
+    - ✅ Full description (Hebrew, comprehensive)
+    - 🔄 Graphics (NEXT SESSION):
+      - ⏳ App icon (512x512 PNG) - Need to create/upload
+      - ⏳ Feature graphic (1024x500) - Need to create
+      - ⏳ Screenshots (at least 2) - Need to capture from app
+
+- 📊 **PROGRESS SUMMARY:**
+  - ✅ All required text content: DONE
+  - ✅ All policy documents: DONE
+  - ✅ All questionnaires: DONE
+  - 🔄 Graphics/images: NEXT (app icon, screenshots, feature graphic)
+  - ⏳ Then: Upload .aab to Internal Testing
+  - ⏳ Then: Production release!
+
+### Earlier Today (Session 6 - STORE SETUP PHASE! 🏪):
 - ✅ **BOTH BUILDS COMPLETE!** 🎉
   - ✅ Android .aab file downloaded and ready
   - ✅ iOS .ipa file downloaded and ready
