@@ -49,8 +49,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "9b7c2908-ca85-4f3f-b595-d9e6b9eab5c1"
       }
-    }
+    },
+    "owner": "combined"
   }
 }
