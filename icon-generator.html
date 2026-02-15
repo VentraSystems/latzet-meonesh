@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לצאת מעונש - Icon Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 900px;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        .canvas-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        .canvas-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        canvas {
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .canvas-label {
+            color: #333;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: right;
+        }
+        .info h3 {
+            margin-top: 0;
+        }
+        .info ul {
+            text-align: right;
+            list-style-position: inside;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 לצאת מעונש</h1>
+        <p class="subtitle">מחולל אייקונים מקצועי</p>
+
+        <div class="canvas-container">
+            <div class="canvas-wrapper">
+                <canvas id="icon512" width="512" height="512"></canvas>
+                <div class="canvas-label">אייקון 512×512 (Google Play)</div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="icon1024" width="256" height="256"></canvas>
+                <div class="canvas-label">תצוגה מקדימה 1024×1024 (iOS)</div>
+            </div>
+        </div>
+
+        <div>
+            <button onclick="downloadIcon512()">💾 הורד אייקון 512×512</button>
+            <button onclick="downloadIcon1024()">💾 הורד אייקון 1024×1024</button>
+            <button onclick="downloadFeatureGraphic()">🎨 הורד Feature Graphic</button>
+        </div>
+
+        <div class="info">
+            <h3>📋 הוראות שימוש:</h3>
+            <ul>
+                <li>לחץ על הכפתורים להורדת הקבצים</li>
+                <li>העלה את הקובץ 512×512 ל-Google Play Console</li>
+                <li>העלה את הקובץ 1024×1024 ל-App Store Connect</li>
+                <li>העלה את ה-Feature Graphic (1024×500) ל-Google Play</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Draw main icon design
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            const scale = size / 512;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+
+            // Background gradient
+            const bgGradient = ctx.createLinearGradient(0, 0, size, size);
+            bgGradient.addColorStop(0, '#667eea');
+            bgGradient.addColorStop(0.5, '#764ba2');
+            bgGradient.addColorStop(1, '#f093fb');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Add subtle pattern
+            for (let i = 0; i < 20; i++) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                ctx.beginPath();
+                ctx.arc(
+                    Math.random() * size,
+                    Math.random() * size,
+                    Math.random() * 30 * scale,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+
+            // Draw door frame
+            ctx.save();
+            ctx.translate(size * 0.5, size * 0.5);
+
+            // Door shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 20 * scale;
+            ctx.shadowOffsetX = 5 * scale;
+            ctx.shadowOffsetY = 5 * scale;
+
+            // Door background (opened)
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.roundRect(-140 * scale, -180 * scale, 280 * scale, 360 * scale, 20 * scale);
+            ctx.fill();
+
+            ctx.shadowColor = 'transparent';
+
+            // Door frame
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 12 * scale;
+            ctx.beginPath();
+            ctx.roundRect(-140 * scale, -180 * scale, 280 * scale, 360 * scale, 20 * scale);
+            ctx.stroke();
+
+            // Door opened effect (left side visible)
+            const doorGradient = ctx.createLinearGradient(-140 * scale, 0, -100 * scale, 0);
+            doorGradient.addColorStop(0, '#3498db');
+            doorGradient.addColorStop(1, '#5dade2');
+            ctx.fillStyle = doorGradient;
+            ctx.beginPath();
+            ctx.moveTo(-140 * scale, -180 * scale);
+            ctx.lineTo(-100 * scale, -160 * scale);
+            ctx.lineTo(-100 * scale, 160 * scale);
+            ctx.lineTo(-140 * scale, 180 * scale);
+            ctx.closePath();
+            ctx.fill();
+
+            // Door handle
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(-110 * scale, 0, 8 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Checkmark - HUGE and centered
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 35 * scale;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Checkmark shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 15 * scale;
+            ctx.shadowOffsetX = 3 * scale;
+            ctx.shadowOffsetY = 3 * scale;
+
+            ctx.beginPath();
+            ctx.moveTo(-50 * scale, 0);
+            ctx.lineTo(-10 * scale, 50 * scale);
+            ctx.lineTo(70 * scale, -60 * scale);
+            ctx.stroke();
+
+            ctx.shadowColor = 'transparent';
+
+            // Add sparkles/stars around checkmark
+            const sparkles = [
+                { x: -80, y: -100, size: 20 },
+                { x: 90, y: -100, size: 25 },
+                { x: -90, y: 80, size: 18 },
+                { x: 100, y: 80, size: 22 },
+                { x: 0, y: -140, size: 15 }
+            ];
+
+            sparkles.forEach(sparkle => {
+                drawStar(
+                    ctx,
+                    sparkle.x * scale,
+                    sparkle.y * scale,
+                    sparkle.size * scale,
+                    '#ffd700'
+                );
+            });
+
+            ctx.restore();
+        }
+
+        // Draw a star
+        function drawStar(ctx, cx, cy, size, color) {
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Star glow
+            ctx.shadowColor = color;
+            ctx.shadowBlur = size * 0.5;
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const angle = (Math.PI * 2 * i) / 8;
+                const radius = i % 2 === 0 ? size : size * 0.4;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Draw feature graphic
+        function drawFeatureGraphic(canvas) {
+            const ctx = canvas.getContext('2d');
+            const width = 1024;
+            const height = 500;
+
+            // Background gradient
+            const bgGradient = ctx.createLinearGradient(0, 0, width, height);
+            bgGradient.addColorStop(0, '#667eea');
+            bgGradient.addColorStop(0.5, '#764ba2');
+            bgGradient.addColorStop(1, '#f093fb');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // Add pattern
+            for (let i = 0; i < 30; i++) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.beginPath();
+                ctx.arc(
+                    Math.random() * width,
+                    Math.random() * height,
+                    Math.random() * 40,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+
+            // Draw icon on left
+            ctx.save();
+            ctx.translate(180, height / 2);
+            ctx.scale(0.5, 0.5);
+
+            // Simplified icon
+            // Door
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 5;
+            ctx.shadowOffsetY = 5;
+            ctx.beginPath();
+            ctx.roundRect(-140, -180, 280, 360, 20);
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 12;
+            ctx.stroke();
+
+            // Checkmark
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 35;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-50, 0);
+            ctx.lineTo(-10, 50);
+            ctx.lineTo(70, -60);
+            ctx.stroke();
+
+            ctx.restore();
+
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'right';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            // App name
+            ctx.font = 'bold 80px Arial';
+            ctx.fillText('לצאת מעונש', width - 80, height / 2 - 40);
+
+            // Subtitle
+            ctx.font = '40px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillText('משימות שמשחררות!', width - 80, height / 2 + 30);
+
+            // Small tagline
+            ctx.font = '28px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillText('אפליקציה משפחתית לניהול משימות', width - 80, height / 2 + 75);
+        }
+
+        // Initialize
+        const canvas512 = document.getElementById('icon512');
+        const canvas1024Preview = document.getElementById('icon1024');
+
+        drawIcon(canvas512, 512);
+        drawIcon(canvas1024Preview, 256); // Preview only
+
+        // Download functions
+        function downloadIcon512() {
+            const canvas = document.getElementById('icon512');
+            const link = document.createElement('a');
+            link.download = 'app-icon-512.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadIcon1024() {
+            // Create temporary 1024x1024 canvas
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 1024;
+            tempCanvas.height = 1024;
+            drawIcon(tempCanvas, 1024);
+
+            const link = document.createElement('a');
+            link.download = 'app-icon-1024.png';
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadFeatureGraphic() {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 1024;
+            tempCanvas.height = 500;
+            drawFeatureGraphic(tempCanvas);
+
+            const link = document.createElement('a');
+            link.download = 'feature-graphic-1024x500.png';
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>

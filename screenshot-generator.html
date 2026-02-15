@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לצאת מעונש - Screenshot Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        .screenshots {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 40px 0;
+        }
+        .screenshot-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        canvas {
+            border-radius: 10px;
+            display: block;
+        }
+        .label {
+            color: #333;
+            font-weight: bold;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        .buttons {
+            margin: 30px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: right;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 לצאת מעונש</h1>
+        <p class="subtitle">מחולל צילומי מסך מקצועיים</p>
+
+        <div class="screenshots">
+            <div class="screenshot-wrapper">
+                <canvas id="screenshot1" width="400" height="800"></canvas>
+                <div class="label">צילום 1: מסך הורה - מעקב אחר משימות</div>
+            </div>
+            <div class="screenshot-wrapper">
+                <canvas id="screenshot2" width="400" height="800"></canvas>
+                <div class="label">צילום 2: מסך ילד - השלמת משימות</div>
+            </div>
+            <div class="screenshot-wrapper">
+                <canvas id="screenshot3" width="400" height="800"></canvas>
+                <div class="label">צילום 3: חגיגת חופש! 🎉</div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="downloadScreenshot(1)">💾 הורד צילום 1</button>
+            <button onclick="downloadScreenshot(2)">💾 הורד צילום 2</button>
+            <button onclick="downloadScreenshot(3)">💾 הורד צילום 3</button>
+            <button onclick="downloadAll()">📦 הורד את כולם</button>
+        </div>
+
+        <div class="info">
+            <h3>📋 מה לעשות עכשיו:</h3>
+            <ul style="text-align: right; list-style-position: inside;">
+                <li>לחץ "הורד את כולם" או הורד כל צילום בנפרד</li>
+                <li>חזור ל-Google Play Console</li>
+                <li>גלול לסעיף "Phone screenshots"</li>
+                <li>העלה לפחות 2 צילומי מסך (מומלץ 3)</li>
+                <li>לחץ "שמור" בתחתית העמוד</li>
+                <li>🎉 סיימת! מוכן להעלאה!</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Screenshot 1: Parent Home Screen
+        function drawParentHome(canvas) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, '#3498DB');
+            gradient.addColorStop(1, '#2980B9');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // Status bar
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, width, 50);
+            ctx.fillStyle = 'white';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('9:41', width / 2, 30);
+
+            // Header
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('לצאת מעונש', width / 2, 110);
+            ctx.font = '20px Arial';
+            ctx.fillText('מסך הורה', width / 2, 145);
+
+            // Card background
+            ctx.fillStyle = 'white';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetY = 10;
+            roundRect(ctx, 30, 200, width - 60, 450, 20);
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+
+            // Card content
+            ctx.fillStyle = '#2C3E50';
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('עונש פעיל', width / 2, 250);
+
+            // Status icon
+            ctx.font = '80px Arial';
+            ctx.fillText('⏱️', width / 2, 340);
+
+            // Child name
+            ctx.font = '24px Arial';
+            ctx.fillStyle = '#7F8C8D';
+            ctx.fillText('ילד: אליה', width / 2, 390);
+
+            // Progress
+            ctx.font = 'bold 48px Arial';
+            ctx.fillStyle = '#E74C3C';
+            ctx.fillText('2/5', width / 2, 470);
+
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#7F8C8D';
+            ctx.fillText('משימות הושלמו', width / 2, 505);
+
+            // Pending tasks
+            ctx.fillStyle = 'white';
+            ctx.fillRect(30, 560, width - 60, 80);
+            ctx.strokeStyle = '#E74C3C';
+            ctx.lineWidth = 3;
+            roundRect(ctx, 30, 560, width - 60, 80, 15);
+            ctx.stroke();
+
+            ctx.fillStyle = '#E74C3C';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🔔 1 משימה ממתינה לאישור', width / 2, 610);
+
+            // Button
+            const buttonGradient = ctx.createLinearGradient(0, 680, 0, 760);
+            buttonGradient.addColorStop(0, '#27AE60');
+            buttonGradient.addColorStop(1, '#229954');
+            ctx.fillStyle = buttonGradient;
+            roundRect(ctx, 50, 680, width - 100, 60, 30);
+            ctx.fill();
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('אשר משימות', width / 2, 720);
+
+            // Footer
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '14px Arial';
+            ctx.fillText('Ventra Software Systems', width / 2, height - 30);
+        }
+
+        // Screenshot 2: Child Task Screen
+        function drawChildTasks(canvas) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, '#E74C3C');
+            gradient.addColorStop(1, '#C0392B');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // Status bar
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, width, 50);
+            ctx.fillStyle = 'white';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('9:41', width / 2, 30);
+
+            // Header
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('המשימות שלי', width / 2, 110);
+
+            // Progress bar background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            roundRect(ctx, 40, 140, width - 80, 30, 15);
+            ctx.fill();
+
+            // Progress bar fill
+            const progressGradient = ctx.createLinearGradient(0, 0, width, 0);
+            progressGradient.addColorStop(0, '#27AE60');
+            progressGradient.addColorStop(1, '#2ECC71');
+            ctx.fillStyle = progressGradient;
+            roundRect(ctx, 40, 140, (width - 80) * 0.4, 30, 15);
+            ctx.fill();
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('2/5 הושלמו', width / 2, 160);
+
+            // Task cards
+            const tasks = [
+                { emoji: '✅', text: 'ניקיון חדר', status: 'הושלם', color: '#27AE60' },
+                { emoji: '✅', text: 'שיעורי בית', status: 'הושלם', color: '#27AE60' },
+                { emoji: '⏳', text: 'עזרה בבית', status: 'ממתין לאישור', color: '#F39C12' },
+                { emoji: '📝', text: 'קריאת ספר', status: 'ממתין', color: '#95A5A6' },
+                { emoji: '🧪', text: 'חידון מתמטיקה', status: 'ממתין', color: '#95A5A6' }
+            ];
+
+            let y = 200;
+            tasks.forEach(task => {
+                // Card
+                ctx.fillStyle = 'white';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 5;
+                roundRect(ctx, 30, y, width - 60, 90, 15);
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+
+                // Emoji
+                ctx.font = '36px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(task.emoji, width - 60, y + 50);
+
+                // Task text
+                ctx.fillStyle = '#2C3E50';
+                ctx.font = 'bold 22px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(task.text, width - 110, y + 40);
+
+                // Status
+                ctx.fillStyle = task.color;
+                ctx.font = '16px Arial';
+                ctx.fillText(task.status, width - 110, y + 65);
+
+                y += 105;
+            });
+
+            // Footer
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Ventra Software Systems', width / 2, height - 30);
+        }
+
+        // Screenshot 3: Celebration Screen
+        function drawCelebration(canvas) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, '#9B59B6');
+            gradient.addColorStop(0.5, '#8E44AD');
+            gradient.addColorStop(1, '#27AE60');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // Confetti
+            for (let i = 0; i < 100; i++) {
+                ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 60%)`;
+                ctx.save();
+                ctx.translate(Math.random() * width, Math.random() * height);
+                ctx.rotate(Math.random() * Math.PI * 2);
+                ctx.fillRect(-5, -5, 10, 10);
+                ctx.restore();
+            }
+
+            // Status bar
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, width, 50);
+            ctx.fillStyle = 'white';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('9:41', width / 2, 30);
+
+            // Main celebration
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎉', width / 2, 180);
+
+            ctx.font = 'bold 40px Arial';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 10;
+            ctx.fillText('!יצאת מעונש', width / 2, 240);
+            ctx.shadowColor = 'transparent';
+
+            // Card
+            ctx.fillStyle = 'white';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetY = 10;
+            roundRect(ctx, 40, 300, width - 80, 350, 20);
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+
+            // Card content
+            ctx.fillStyle = '#2C3E50';
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('כל הכבוד!', width / 2, 350);
+
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#7F8C8D';
+            ctx.fillText('השלמת את כל המשימות', width / 2, 390);
+
+            // Stats
+            const stats = [
+                { icon: '✅', label: 'משימות הושלמו', value: '5' },
+                { icon: '⏱️', label: 'זמן שעבר', value: '3 ימים' },
+                { icon: '🌟', label: 'נקודות', value: '150' }
+            ];
+
+            let statY = 440;
+            stats.forEach(stat => {
+                ctx.font = '32px Arial';
+                ctx.fillStyle = '#3498DB';
+                ctx.textAlign = 'center';
+                ctx.fillText(stat.icon, width / 2, statY);
+
+                ctx.font = '18px Arial';
+                ctx.fillStyle = '#7F8C8D';
+                ctx.fillText(stat.label, width / 2, statY + 30);
+
+                ctx.font = 'bold 24px Arial';
+                ctx.fillStyle = '#2C3E50';
+                ctx.fillText(stat.value, width / 2, statY + 60);
+
+                statY += 90;
+            });
+
+            // Button
+            const buttonGradient = ctx.createLinearGradient(0, 700, 0, 760);
+            buttonGradient.addColorStop(0, '#3498DB');
+            buttonGradient.addColorStop(1, '#2980B9');
+            ctx.fillStyle = buttonGradient;
+            roundRect(ctx, 60, 700, width - 120, 50, 25);
+            ctx.fill();
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText('חזרה לבית', width / 2, 732);
+
+            // Footer
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '14px Arial';
+            ctx.fillText('Ventra Software Systems', width / 2, height - 30);
+        }
+
+        // Helper function for rounded rectangles
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Download functions
+        function downloadScreenshot(num) {
+            const canvas = document.getElementById(`screenshot${num}`);
+            const link = document.createElement('a');
+            link.download = `screenshot-${num}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadAll() {
+            setTimeout(() => downloadScreenshot(1), 100);
+            setTimeout(() => downloadScreenshot(2), 300);
+            setTimeout(() => downloadScreenshot(3), 500);
+        }
+
+        // Initialize
+        drawParentHome(document.getElementById('screenshot1'));
+        drawChildTasks(document.getElementById('screenshot2'));
+        drawCelebration(document.getElementById('screenshot3'));
+    </script>
+</body>
+</html>
