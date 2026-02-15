@@ -1,0 +1,50 @@
+════════════════════════════════════════════════════
+  לצאת מעונש - GET OUT OF PUNISHMENT
+  Expo Development Server Connection Info
+════════════════════════════════════════════════════
+
+📱 TO OPEN THE APP ON YOUR PHONE:
+
+1. Download "Expo Go" app on your phone
+   - iPhone: App Store
+   - Android: Google Play
+
+2. Make sure phone is on SAME WiFi as computer
+
+3. In Expo Go, enter this URL manually:
+
+   exp://192.168.1.101:8082
+
+4. Tap "Connect" and wait for app to load!
+
+════════════════════════════════════════════════════
+
+🌐 Expo Server Running On:
+- Local: http://localhost:8082
+- Network: http://192.168.1.101:8082
+- Port: 8082
+
+════════════════════════════════════════════════════
+
+📝 QUICK TEST WORKFLOW:
+
+PARENT (iPhone):
+1. Tap "הורה" (Parent)
+2. Sign up with email
+3. Generate 6-digit code
+4. Give code to child
+
+CHILD (Android):
+1. Tap "ילד" (Child)
+2. Enter 6-digit code
+3. Link to parent
+4. See punishment appear!
+
+════════════════════════════════════════════════════
+
+✅ Firestore Rules: DEPLOYED
+✅ Android Bug: FIXED
+✅ Server Status: RUNNING
+✅ Ready to Test: YES! 🎉
+
+════════════════════════════════════════════════════
