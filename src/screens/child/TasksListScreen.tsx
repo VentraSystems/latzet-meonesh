@@ -119,8 +119,9 @@ export default function TasksListScreen({ navigation }: any) {
       return;
     }
     setSelectedTask(task);
+    // Pre-fill with existing submission data so child can update it
     setPhotoUri(null);
-    setTaskNote('');
+    setTaskNote(task.childNote || '');
   };
 
   const submitTask = async () => {
@@ -141,7 +142,8 @@ export default function TasksListScreen({ navigation }: any) {
               status: 'submitted',
               submittedAt: new Date(),
               childNote: taskNote,
-              ...(photoUrl ? { photoUrl } : {}),
+              // Use new photo if uploaded, keep existing if not replaced
+              photoUrl: photoUrl || t.photoUrl || null,
             }
           : t
       );
@@ -231,6 +233,14 @@ export default function TasksListScreen({ navigation }: any) {
           {/* Photo Upload */}
           <View style={styles.photoSection}>
             <Text style={[styles.photoSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.tasksList.addPhoto}</Text>
+            {/* Show previously submitted photo if editing */}
+            {!photoUri && selectedTask.photoUrl && (
+              <View style={styles.existingPhotoWrap}>
+                <Text style={styles.existingPhotoLabel}>📎 {t.tasksList.currentPhoto || 'Current photo:'}</Text>
+                <Image source={{ uri: selectedTask.photoUrl }} style={styles.photoImg} resizeMode="cover" />
+                <Text style={styles.existingPhotoHint}>{t.tasksList.replacePhotoHint || 'Pick a new photo below to replace it'}</Text>
+              </View>
+            )}
             {photoUri ? (
               <View style={styles.photoPreview}>
                 <Image source={{ uri: photoUri }} style={styles.photoImg} resizeMode="cover" />
@@ -348,6 +358,34 @@ export default function TasksListScreen({ navigation }: any) {
               </LinearGradient>
             </TouchableOpacity>
           )}
+
+          {task.status === 'submitted' && task.type !== 'quiz' && (
+            <TouchableOpacity
+              style={styles.startWrapper}
+              onPress={() => handleTaskComplete(task)}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={['#F39C12', '#E67E22']} style={styles.startButton}>
+                <Text style={styles.startButtonText}>
+                  ✏️ {t.tasksList.editSubmission || 'Edit Submission'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {task.status === 'rejected' && task.type !== 'quiz' && (
+            <TouchableOpacity
+              style={styles.startWrapper}
+              onPress={() => handleTaskComplete(task)}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={['#8E54E9', '#4776E6']} style={styles.startButton}>
+                <Text style={styles.startButtonText}>
+                  🔄 {t.tasksList.resubmit || 'Resubmit Task'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
         </View>
       ))}
     </ScrollView>
@@ -402,6 +440,9 @@ const styles = StyleSheet.create({
   rejectionNote: { backgroundColor: '#FFE5E5', borderRadius: 10, padding: 12, marginTop: 10 },
   rejectionLabel: { fontSize: 13, fontWeight: 'bold', color: '#E74C3C', marginBottom: 4, textAlign: 'right' },
   rejectionText: { fontSize: 13, color: '#E74C3C', textAlign: 'right' },
+  existingPhotoWrap: { marginBottom: 12, backgroundColor: '#FFF9E6', borderRadius: 10, padding: 10 },
+  existingPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#856404', marginBottom: 6 },
+  existingPhotoHint: { fontSize: 11, color: '#B8860B', marginTop: 6, textAlign: 'center' },
   hwThumb: { width: 52, height: 52, borderRadius: 8, marginLeft: 8 },
   hwPhotoContainer: { marginTop: 12, backgroundColor: '#F0F7FF', borderRadius: 10, padding: 10 },
   hwPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#3498DB', marginBottom: 8 },
