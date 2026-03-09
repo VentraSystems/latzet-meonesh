@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "לצאת מעונש",
+    "name": "Escape Challenge",
     "slug": "get-out-of-punishment",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -36,7 +36,7 @@
       "icon": "./assets/icon.png",
       "color": "#3498DB",
       "androidMode": "default",
-      "androidCollapsedTitle": "לצאת מעונש"
+      "androidCollapsedTitle": "Escape Challenge"
     },
     "plugins": [
       [
