@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { createLinkingCode } from '../../utils/linkingCode';
+import { showAlert } from '../../utils/alert';
 
 export default function LinkChildScreen({ navigation }: any) {
   const [linkingCode, setLinkingCode] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export default function LinkChildScreen({ navigation }: any) {
       const code = await createLinkingCode(user.uid);
       setLinkingCode(code);
     } catch (error: any) {
-      Alert.alert('שגיאה', 'לא הצלחנו ליצור קוד');
+      showAlert('שגיאה', 'לא הצלחנו ליצור קוד');
     } finally {
       setLoading(false);
     }

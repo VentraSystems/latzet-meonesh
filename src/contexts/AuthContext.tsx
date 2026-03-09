@@ -8,10 +8,14 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { UserRole } from '../types';
 import { useNotifications } from '../hooks/useNotifications';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   user: User | null;
@@ -21,7 +25,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  linkedUserId: string | null;
+  linkedUserId: string | null;       // currently selected child
+  linkedUserIds: string[];           // all linked children
+  setSelectedChild: (childId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -38,60 +44,112 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
+  const [linkedUserIds, setLinkedUserIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Initialize push notifications for the current user
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const { id_token } = googleResponse.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      signInWithCredential(auth, credential).catch((error) => {
+        console.error('Firebase Google sign-in error:', error);
+      });
+    }
+  }, [googleResponse]);
+
   const { expoPushToken, error: notificationError } = useNotifications(user?.uid);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeDoc: (() => void) | null = null;
+    let unsubscribePendingLink: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
 
+      if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }
+      if (unsubscribePendingLink) { unsubscribePendingLink(); unsubscribePendingLink = null; }
+
       if (firebaseUser) {
-        // Get user role and linked user from Firestore
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUserRole(userData.role as UserRole);
-          setLinkedUserId(userData.linkedUserId || null);
-        }
+        unsubscribeDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (userDoc) => {
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUserRole(userData.role as UserRole);
+
+            // Multi-child: support both old (linkedUserId) and new (linkedUserIds) format
+            const ids: string[] = userData.linkedUserIds || (userData.linkedUserId ? [userData.linkedUserId] : []);
+            setLinkedUserIds(ids);
+            // Selected child = explicit selection or first in list
+            setLinkedUserId(userData.selectedChildId || ids[0] || null);
+
+            // If parent with no children yet, watch for pending link signal
+            if (userData.role === 'parent' && ids.length === 0) {
+              if (!unsubscribePendingLink) {
+                unsubscribePendingLink = onSnapshot(
+                  doc(db, 'linkingCodes', `pending_${firebaseUser.uid}`),
+                  async (pendingDoc) => {
+                    if (pendingDoc.exists()) {
+                      const { childId } = pendingDoc.data();
+                      await updateDoc(doc(db, 'users', firebaseUser.uid), {
+                        linkedUserIds: arrayUnion(childId),
+                        linkedUserId: childId, // keep backward compat
+                        selectedChildId: childId,
+                      });
+                      await deleteDoc(doc(db, 'linkingCodes', `pending_${firebaseUser.uid}`));
+                    }
+                  }
+                );
+              }
+            } else if (ids.length > 0 && unsubscribePendingLink) {
+              // But still watch for additional children linking
+              // (new pending docs use pending_{parentId}_{timestamp} but for simplicity keep same key)
+            }
+          }
+          setLoading(false);
+        });
       } else {
         setUserRole(null);
         setLinkedUserId(null);
+        setLinkedUserIds([]);
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+      if (unsubscribePendingLink) unsubscribePendingLink();
+    };
   }, []);
 
-  // Log notification errors
   useEffect(() => {
-    if (notificationError) {
-      console.error('Notification error:', notificationError);
-    }
+    if (notificationError) console.error('Notification error:', notificationError);
   }, [notificationError]);
 
-  // Log when push token is registered
-  useEffect(() => {
-    if (expoPushToken) {
-      console.log('Push token registered:', expoPushToken);
+  const setSelectedChild = async (childId: string) => {
+    setLinkedUserId(childId);
+    if (user) {
+      await updateDoc(doc(db, 'users', user.uid), { selectedChildId: childId });
     }
-  }, [expoPushToken]);
+  };
 
   const signUp = async (email: string, password: string, name: string, role: UserRole) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-    // Create user document in Firestore
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       name,
       email,
       role,
       createdAt: new Date(),
       linkedUserId: null,
+      linkedUserIds: [],
+      totalPoints: 0,
+      badges: [],
     });
-
     setUserRole(role);
   };
 
@@ -100,15 +158,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
-    // Note: Google Sign-In requires additional setup with expo-auth-session
-    // This is a placeholder for now
-    alert('Google Sign-In will be implemented in the next phase!');
+    if (!googleRequest) {
+      throw new Error('Google Sign-In is not configured. Please add OAuth client IDs.');
+    }
+    await googlePromptAsync();
   };
 
   const logout = async () => {
     await signOut(auth);
     setUserRole(null);
     setLinkedUserId(null);
+    setLinkedUserIds([]);
   };
 
   const value = {
@@ -120,6 +180,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signInWithGoogle,
     logout,
     linkedUserId,
+    linkedUserIds,
+    setSelectedChild,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

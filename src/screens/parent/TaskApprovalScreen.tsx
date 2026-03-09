@@ -5,12 +5,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { notifyTaskApproved, notifyTaskRejected } from '../../utils/notifications';
+import { showAlert } from '../../utils/alert';
+import { awardPointsAndBadges, incrementCompletedPunishments, BADGES, POINTS_PER_TASK } from '../../utils/badges';
 import RejectTaskModal from '../../components/RejectTaskModal';
 
 export default function TaskApprovalScreen({ route, navigation }: any) {
@@ -20,9 +23,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadPunishment();
-  }, []);
+  useEffect(() => { loadPunishment(); }, []);
 
   const loadPunishment = async () => {
     try {
@@ -31,20 +32,20 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
         setPunishment({ id: punishmentDoc.id, ...punishmentDoc.data() });
       }
     } catch (error) {
-      Alert.alert('שגיאה', 'לא הצלחנו לטעון את המשימות');
+      showAlert('שגיאה', 'לא הצלחנו לטעון את המשימות');
     } finally {
       setLoading(false);
     }
   };
 
   const handleApprove = async (taskId: string) => {
-    Alert.alert(
+    showAlert(
       'אישור משימה',
       'האם אתה בטוח שברצונך לאשר את המשימה?',
       [
         { text: 'ביטול', style: 'cancel' },
         {
-          text: 'אשר',
+          text: 'אשר ✅',
           onPress: async () => {
             try {
               const task = punishment.tasks.find((t: any) => t.id === taskId);
@@ -52,33 +53,45 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
                 t.id === taskId ? { ...t, status: 'approved', approvedAt: new Date() } : t
               );
 
-              await updateDoc(doc(db, 'punishments', punishmentId), {
-                tasks: updatedTasks,
-              });
+              await updateDoc(doc(db, 'punishments', punishmentId), { tasks: updatedTasks });
 
-              // Send notification to child
-              await notifyTaskApproved(
+              // Award points and badges to child
+              const result = await awardPointsAndBadges(
                 punishment.childId,
-                task.title,
-                punishmentId,
-                taskId
+                task.type || 'custom',
+                task.quizScore
               );
 
-              // Check if all tasks are approved
+              await notifyTaskApproved(punishment.childId, task.title, punishmentId, taskId);
+
               const allApproved = updatedTasks.every((t: any) => t.status === 'approved');
               if (allApproved) {
                 await updateDoc(doc(db, 'punishments', punishmentId), {
                   status: 'completed',
                   completedAt: new Date(),
                 });
-                Alert.alert('🎉 כל המשימות אושרו!', 'הילד יצא מהעונש!', [
+                await incrementCompletedPunishments(punishment.childId);
+
+                const pointsMsg = result ? `\n+${result.pointsEarned} נקודות לילד!` : '';
+                const badgesMsg = result?.newBadges?.length
+                  ? `\n🏆 תגים חדשים: ${result.newBadges.map((b: string) => BADGES[b]?.emoji + BADGES[b]?.name).join(', ')}`
+                  : '';
+
+                showAlert('🎉 כל המשימות אושרו!', `הילד יצא מהעונש!${pointsMsg}${badgesMsg}`, [
                   { text: 'אישור', onPress: () => navigation.goBack() },
                 ]);
               } else {
+                const pointsMsg = result ? `+${result.pointsEarned} נקודות לילד!` : '';
+                const badgesMsg = result?.newBadges?.length
+                  ? ` 🏆 תג חדש: ${BADGES[result.newBadges[0]]?.name}!`
+                  : '';
+                if (pointsMsg || badgesMsg) {
+                  showAlert('אושר! ⭐', `${pointsMsg}${badgesMsg}`);
+                }
                 await loadPunishment();
               }
             } catch (error) {
-              Alert.alert('שגיאה', 'לא הצלחנו לאשר את המשימה');
+              showAlert('שגיאה', 'לא הצלחנו לאשר את המשימה');
             }
           },
         },
@@ -93,32 +106,17 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
 
   const handleRejectSubmit = async (reason: string) => {
     if (!selectedTaskId) return;
-
     try {
       const task = punishment.tasks.find((t: any) => t.id === selectedTaskId);
       const rejectionReason = reason || 'המשימה לא בוצעה כראוי';
       const updatedTasks = punishment.tasks.map((t: any) =>
-        t.id === selectedTaskId
-          ? { ...t, status: 'rejected', rejectedReason }
-          : t
+        t.id === selectedTaskId ? { ...t, status: 'rejected', rejectedReason } : t
       );
-
-      await updateDoc(doc(db, 'punishments', punishmentId), {
-        tasks: updatedTasks,
-      });
-
-      // Send notification to child
-      await notifyTaskRejected(
-        punishment.childId,
-        task.title,
-        rejectionReason,
-        punishmentId,
-        selectedTaskId
-      );
-
+      await updateDoc(doc(db, 'punishments', punishmentId), { tasks: updatedTasks });
+      await notifyTaskRejected(punishment.childId, task.title, rejectionReason, punishmentId, selectedTaskId);
       await loadPunishment();
     } catch (error) {
-      Alert.alert('שגיאה', 'לא הצלחנו לדחות את המשימה');
+      showAlert('שגיאה', 'לא הצלחנו לדחות את המשימה');
     } finally {
       setShowRejectModal(false);
       setSelectedTaskId(null);
@@ -128,7 +126,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3498DB" />
+        <ActivityIndicator size="large" color="#4776E6" />
       </View>
     );
   }
@@ -137,80 +135,107 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
 
   if (pendingTasks.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>✨</Text>
-          <Text style={styles.emptyTitle}>אין משימות לאישור</Text>
-          <Text style={styles.emptyText}>כל המשימות אושרו או ממתינות להגשה</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyEmoji}>✨</Text>
+        <Text style={styles.emptyTitle}>אין משימות לאישור</Text>
+        <Text style={styles.emptyText}>כל המשימות אושרו או ממתינות להגשה</Text>
+        <TouchableOpacity style={styles.backButtonWrapper} onPress={() => navigation.goBack()}>
+          <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.backButton}>
             <Text style={styles.backButtonText}>חזור</Text>
-          </TouchableOpacity>
-        </View>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>אישור משימות</Text>
-      <Text style={styles.subtitle}>{pendingTasks.length} משימות ממתינות לאישור</Text>
-
-      {pendingTasks.map((task: any) => (
-        <View key={task.id} style={styles.taskCard}>
-          <View style={styles.taskHeader}>
-            <Text style={styles.taskIcon}>
-              {task.type === 'quiz' ? '🧠' : '📝'}
-            </Text>
-            <Text style={styles.taskTitle}>{task.title}</Text>
-          </View>
-
-          <Text style={styles.taskDescription}>{task.description}</Text>
-
-          {task.childNote && (
-            <View style={styles.noteContainer}>
-              <Text style={styles.noteLabel}>הערת הילד:</Text>
-              <Text style={styles.noteText}>{task.childNote}</Text>
-            </View>
-          )}
-
-          {task.quizScore !== undefined && (
-            <View style={styles.quizScoreContainer}>
-              <Text style={styles.quizScoreLabel}>ציון בחידון:</Text>
-              <Text style={styles.quizScoreText}>
-                {task.quizScore}% {task.quizScore >= 60 ? '✅' : '❌'}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.approveButton]}
-              onPress={() => handleApprove(task.id)}
-            >
-              <Text style={styles.actionButtonText}>✅ אשר</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.rejectButton]}
-              onPress={() => handleReject(task.id)}
-            >
-              <Text style={styles.actionButtonText}>❌ דחה</Text>
-            </TouchableOpacity>
-          </View>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.titleSection}>
+        <Text style={styles.title}>אישור משימות</Text>
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{pendingTasks.length}</Text>
         </View>
-      ))}
+      </View>
+
+      {pendingTasks.map((task: any) => {
+        const points = POINTS_PER_TASK[task.type as keyof typeof POINTS_PER_TASK] ?? 10;
+        return (
+          <View key={task.id} style={styles.taskCard}>
+            {/* Task Header */}
+            <View style={styles.taskHeader}>
+              <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : '📝'}</Text>
+              <View style={styles.taskTitleSection}>
+                <Text style={styles.taskTitle}>{task.title}</Text>
+                <View style={styles.pointsBadge}>
+                  <Text style={styles.pointsBadgeText}>+{points} ⭐</Text>
+                </View>
+              </View>
+            </View>
+
+            {task.description ? (
+              <Text style={styles.taskDescription}>{task.description}</Text>
+            ) : null}
+
+            {/* Child Note */}
+            {task.childNote && (
+              <View style={styles.noteContainer}>
+                <Text style={styles.noteLabel}>💬 הערת הילד:</Text>
+                <Text style={styles.noteText}>{task.childNote}</Text>
+              </View>
+            )}
+
+            {/* Photo Proof */}
+            {task.photoUrl && (
+              <View style={styles.photoContainer}>
+                <Text style={styles.photoLabel}>📸 תמונת הוכחה:</Text>
+                <Image
+                  source={{ uri: task.photoUrl }}
+                  style={styles.photo}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+
+            {/* Quiz Score */}
+            {task.quizScore !== undefined && (
+              <View style={[styles.quizScore, { backgroundColor: task.quizScore >= 60 ? '#E8F8F0' : '#FFF0F0' }]}>
+                <Text style={styles.quizScoreLabel}>ציון בחידון:</Text>
+                <Text style={[styles.quizScoreText, { color: task.quizScore >= 60 ? '#27AE60' : '#E74C3C' }]}>
+                  {task.quizScore}% {task.quizScore >= 60 ? '✅' : '❌'}
+                </Text>
+              </View>
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.approveWrapper}
+                onPress={() => handleApprove(task.id)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.actionBtn}>
+                  <Text style={styles.actionBtnText}>✅ אשר</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.rejectWrapper}
+                onPress={() => handleReject(task.id)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#E74C3C', '#C0392B']} style={styles.actionBtn}>
+                  <Text style={styles.actionBtnText}>❌ דחה</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })}
 
       <RejectTaskModal
         visible={showRejectModal}
-        taskTitle={
-          selectedTaskId
-            ? punishment.tasks.find((t: any) => t.id === selectedTaskId)?.title || ''
-            : ''
-        }
-        onCancel={() => {
-          setShowRejectModal(false);
-          setSelectedTaskId(null);
-        }}
+        taskTitle={selectedTaskId ? punishment.tasks.find((t: any) => t.id === selectedTaskId)?.title || '' : ''}
+        onCancel={() => { setShowRejectModal(false); setSelectedTaskId(null); }}
         onSubmit={handleRejectSubmit}
       />
     </ScrollView>
@@ -218,154 +243,77 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-    padding: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyEmoji: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  backButton: {
-    backgroundColor: '#3498DB',
-    borderRadius: 12,
-    padding: 16,
-    paddingHorizontal: 40,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  taskCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  taskHeader: {
+  container: { flex: 1, backgroundColor: '#F0F2FF', padding: 16 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0F2FF' },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#F0F2FF' },
+  emptyEmoji: { fontSize: 80, marginBottom: 20 },
+  emptyTitle: { fontSize: 24, fontWeight: 'bold', color: '#2C3E50', marginBottom: 12, textAlign: 'center' },
+  emptyText: { fontSize: 16, color: '#7F8C8D', textAlign: 'center', marginBottom: 30 },
+  backButtonWrapper: { borderRadius: 14, overflow: 'hidden' },
+  backButton: { padding: 16, paddingHorizontal: 40 },
+  backButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  titleSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'flex-end',
+    marginTop: 16,
+    marginBottom: 20,
+    gap: 10,
   },
-  taskIcon: {
-    fontSize: 30,
-    marginLeft: 12,
+  title: { fontSize: 26, fontWeight: 'bold', color: '#2C3E50' },
+  countBadge: {
+    backgroundColor: '#4776E6',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  taskTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    flex: 1,
-    textAlign: 'right',
-  },
-  taskDescription: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'right',
+  countBadgeText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  taskCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
+    shadowColor: '#4776E6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  noteContainer: {
+  taskHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  taskIcon: { fontSize: 32, marginLeft: 12 },
+  taskTitleSection: { flex: 1, alignItems: 'flex-end' },
+  taskTitle: { fontSize: 18, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 6 },
+  pointsBadge: {
     backgroundColor: '#FFF9E6',
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F39C12',
+  },
+  pointsBadgeText: { fontSize: 13, color: '#E67E22', fontWeight: 'bold' },
+  taskDescription: { fontSize: 14, color: '#7F8C8D', textAlign: 'right', marginBottom: 12 },
+  noteContainer: { backgroundColor: '#FFF9E6', borderRadius: 12, padding: 12, marginBottom: 12 },
+  noteLabel: { fontSize: 13, fontWeight: 'bold', color: '#856404', marginBottom: 4, textAlign: 'right' },
+  noteText: { fontSize: 14, color: '#856404', textAlign: 'right' },
+  photoContainer: { marginBottom: 12 },
+  photoLabel: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 8 },
+  photo: { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#F0F2FF' },
+  quizScore: {
+    borderRadius: 12,
     padding: 12,
-    marginBottom: 16,
-  },
-  noteLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#856404',
-    marginBottom: 6,
-    textAlign: 'right',
-  },
-  noteText: {
-    fontSize: 14,
-    color: '#856404',
-    textAlign: 'right',
-  },
-  quizScoreContainer: {
-    backgroundColor: '#E8F8F5',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
+    marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  quizScoreLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#27AE60',
-  },
-  quizScoreText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#27AE60',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  approveButton: {
-    backgroundColor: '#27AE60',
-  },
-  rejectButton: {
-    backgroundColor: '#E74C3C',
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  quizScoreLabel: { fontSize: 15, fontWeight: 'bold', color: '#2C3E50' },
+  quizScoreText: { fontSize: 20, fontWeight: 'bold' },
+  actionRow: { flexDirection: 'row', gap: 12 },
+  approveWrapper: { flex: 1, borderRadius: 14, overflow: 'hidden' },
+  rejectWrapper: { flex: 1, borderRadius: 14, overflow: 'hidden' },
+  actionBtn: { padding: 16, alignItems: 'center' },
+  actionBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
 });

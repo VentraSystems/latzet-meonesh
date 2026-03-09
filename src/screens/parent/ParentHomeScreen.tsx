@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,14 +17,12 @@ export default function ParentHomeScreen({ navigation }: any) {
       return;
     }
 
-    // Get child name
     getDoc(doc(db, 'users', linkedUserId)).then((docSnap) => {
       if (docSnap.exists()) {
         setChildName(docSnap.data().name);
       }
     });
 
-    // Listen to active punishment
     const q = query(
       collection(db, 'punishments'),
       where('parentId', '==', user!.uid),
@@ -45,9 +44,9 @@ export default function ParentHomeScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3498DB" />
-      </View>
+      <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#8E54E9" />
+      </LinearGradient>
     );
   }
 
@@ -59,112 +58,148 @@ export default function ParentHomeScreen({ navigation }: any) {
 
   if (!linkedUserId) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>שלום הורה! 👋</Text>
-        </View>
+      <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.fullScreen}>
         <View style={styles.noChildContainer}>
           <Text style={styles.noChildEmoji}>👶</Text>
           <Text style={styles.noChildTitle}>לא מחובר לילד</Text>
           <Text style={styles.noChildText}>
-            כדי להתחיל להשתמש באפליקציה, עליך לחבר ילד לחשבון שלך
+            כדי להתחיל, חבר את הילד שלך לחשבון
           </Text>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={styles.primaryButtonWrapper}
             onPress={() => navigation.navigate('LinkChild')}
+            activeOpacity={0.85}
           >
-            <Text style={styles.primaryButtonText}>חבר ילד</Text>
+            <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={styles.primaryButtonText}>חבר ילד עכשיו</Text>
+            </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-            <Text style={styles.logoutButtonText}>התנתק</Text>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutBtnText}>התנתק</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => navigation.navigate('Settings')}
-        >
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
           <Text style={styles.settingsIcon}>⚙️</Text>
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>שלום הורה! 👋</Text>
-          <Text style={styles.childName}>ילד: {childName || 'טוען...'}</Text>
+          <Text style={styles.headerGreeting}>שלום הורה 👋</Text>
+          <Text style={styles.childNameText}>
+            {childName ? `ילד: ${childName}` : 'טוען...'}
+          </Text>
         </View>
-      </View>
+      </LinearGradient>
 
+      {/* Status Card */}
       <View style={styles.statusCard}>
-        <View style={styles.statusHeader}>
-          <Text style={styles.statusLabel}>סטטוס:</Text>
+        <View style={styles.statusRow}>
           <View style={[styles.statusBadge, isInPunishment ? styles.punishmentBadge : styles.freeBadge]}>
-            <Text style={styles.statusText}>
+            <Text style={styles.statusBadgeText}>
               {isInPunishment ? '🔒 בעונש' : '✅ חופשי'}
             </Text>
           </View>
+          <Text style={styles.statusLabel}>סטטוס ילדך:</Text>
         </View>
 
         {isInPunishment && (
           <>
             <Text style={styles.punishmentName}>{activePunishment.name}</Text>
 
-            <View style={styles.progressSection}>
-              <Text style={styles.progressText}>
-                התקדמות: {completedTasks} מתוך {totalTasks} משימות הושלמו
-              </Text>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBar, { width: `${progress}%` }]} />
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statNumber}>{completedTasks}</Text>
+                <Text style={styles.statLabel}>הושלמו</Text>
+              </View>
+              <View style={[styles.statBox, styles.statBoxMiddle]}>
+                <Text style={styles.statNumber}>{totalTasks}</Text>
+                <Text style={styles.statLabel}>סה"כ</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={[styles.statNumber, pendingTasks > 0 && styles.statNumberWarning]}>{pendingTasks}</Text>
+                <Text style={styles.statLabel}>ממתינות</Text>
               </View>
             </View>
 
+            <View style={styles.progressBarBg}>
+              <LinearGradient
+                colors={['#27AE60', '#2ECC71']}
+                style={[styles.progressBarFill, { width: `${progress}%` as any }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              />
+            </View>
+            <Text style={styles.progressPct}>{Math.round(progress)}% הושלם</Text>
+
             {pendingTasks > 0 && (
-              <View style={styles.tasksPending}>
-                <Text style={styles.tasksPendingText}>
-                  ⏳ {pendingTasks} {pendingTasks === 1 ? 'משימה ממתינה' : 'משימות ממתינות'} לאישור
+              <View style={styles.alertBanner}>
+                <Text style={styles.alertBannerText}>
+                  ⏳ {pendingTasks} {pendingTasks === 1 ? 'משימה ממתינה' : 'משימות ממתינות'} לאישורך
                 </Text>
               </View>
             )}
           </>
         )}
+
+        {!isInPunishment && (
+          <View style={styles.freeMsg}>
+            <Text style={styles.freeMsgEmoji}>😊</Text>
+            <Text style={styles.freeMsgText}>הילד שלך חופשי כרגע!</Text>
+          </View>
+        )}
       </View>
 
-      <View style={styles.actionsSection}>
+      {/* Action Buttons */}
+      <View style={styles.actions}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={styles.primaryButtonWrapper}
           onPress={() => navigation.navigate('SetPunishment')}
+          activeOpacity={0.85}
         >
-          <Text style={styles.primaryButtonText}>➕ הגדר עונש חדש</Text>
+          <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Text style={styles.primaryButtonText}>➕ הגדר עונש חדש</Text>
+          </LinearGradient>
         </TouchableOpacity>
 
         {isInPunishment && pendingTasks > 0 && (
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={styles.approveButtonWrapper}
             onPress={() => navigation.navigate('TaskApproval', { punishmentId: activePunishment.id })}
+            activeOpacity={0.85}
           >
-            <Text style={styles.secondaryButtonText}>✅ אשר משימות ({pendingTasks})</Text>
+            <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={styles.primaryButtonText}>✅ אשר משימות ({pendingTasks})</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
-          style={styles.settingsButtonSecondary}
+          style={styles.analyticsButtonWrapper}
+          onPress={() => navigation.navigate('Analytics')}
+          activeOpacity={0.85}
+        >
+          <LinearGradient colors={['#1a1a2e', '#0f3460']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Text style={styles.primaryButtonText}>📊 דוחות וניתוח</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
           onPress={() => navigation.navigate('Settings')}
+          activeOpacity={0.85}
         >
           <Text style={styles.secondaryButtonText}>⚙️ הגדרות</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Ventra Branding Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Made with ❤️ by
-        </Text>
-        <Text style={styles.footerBrand}>
-          Ventra Software Systems LTD
-        </Text>
+        <Text style={styles.footerText}>Made with ❤️ by Ventra Software Systems LTD</Text>
       </View>
     </ScrollView>
   );
@@ -173,13 +208,15 @@ export default function ParentHomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F0F2FF',
+  },
+  fullScreen: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
   },
   noChildContainer: {
     flex: 1,
@@ -192,141 +229,207 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   noChildTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#2C3E50',
+    color: '#FFFFFF',
     marginBottom: 12,
     textAlign: 'center',
   },
   noChildText: {
     fontSize: 16,
-    color: '#7F8C8D',
+    color: 'rgba(255,255,255,0.65)',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 30,
+    marginBottom: 32,
   },
-  logoutButton: {
+  logoutBtn: {
     marginTop: 20,
     padding: 12,
   },
-  logoutButtonText: {
-    color: '#E74C3C',
+  logoutBtnText: {
+    color: '#FF6B6B',
     fontSize: 16,
     fontWeight: 'bold',
   },
   header: {
-    backgroundColor: '#3498DB',
-    padding: 20,
-    paddingTop: 10,
+    padding: 24,
+    paddingTop: 50,
+    paddingBottom: 30,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   headerContent: {
     flex: 1,
+    alignItems: 'flex-end',
+  },
+  headerGreeting: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  childNameText: {
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
   },
   settingsButton: {
     padding: 8,
-    marginLeft: 10,
+    marginRight: 8,
   },
   settingsIcon: {
-    fontSize: 24,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'right',
-  },
-  childName: {
-    fontSize: 18,
-    color: '#ECF0F1',
-    textAlign: 'right',
-    marginTop: 5,
+    fontSize: 26,
   },
   statusCard: {
     backgroundColor: '#FFFFFF',
-    margin: 15,
-    padding: 20,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    margin: 16,
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#4776E6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  statusHeader: {
+  statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 14,
   },
   statusLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#2C3E50',
   },
   statusBadge: {
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 30,
   },
   punishmentBadge: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: '#FF6B6B',
   },
   freeBadge: {
     backgroundColor: '#27AE60',
   },
-  statusText: {
+  statusBadgeText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 15,
   },
   punishmentName: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2C3E50',
     textAlign: 'right',
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  progressSection: {
-    marginTop: 10,
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  progressText: {
-    fontSize: 16,
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FF',
+    borderRadius: 14,
+  },
+  statBoxMiddle: {
+    marginHorizontal: 8,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#4776E6',
+  },
+  statNumberWarning: {
+    color: '#F39C12',
+  },
+  statLabel: {
+    fontSize: 12,
     color: '#7F8C8D',
-    textAlign: 'right',
-    marginBottom: 10,
+    marginTop: 2,
   },
-  progressBarContainer: {
-    height: 10,
+  progressBarBg: {
+    height: 12,
     backgroundColor: '#ECF0F1',
-    borderRadius: 5,
+    borderRadius: 6,
     overflow: 'hidden',
+    marginBottom: 8,
   },
-  progressBar: {
+  progressBarFill: {
     height: '100%',
-    backgroundColor: '#27AE60',
-    borderRadius: 5,
+    borderRadius: 6,
   },
-  tasksPending: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#FFF3CD',
-    borderRadius: 8,
-  },
-  tasksPendingText: {
-    fontSize: 16,
-    color: '#856404',
+  progressPct: {
+    fontSize: 14,
+    color: '#27AE60',
+    fontWeight: '600',
     textAlign: 'right',
   },
-  actionsSection: {
-    padding: 15,
+  alertBanner: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F39C12',
+  },
+  alertBannerText: {
+    fontSize: 15,
+    color: '#E67E22',
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  freeMsg: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  freeMsgEmoji: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  freeMsgText: {
+    fontSize: 18,
+    color: '#27AE60',
+    fontWeight: '600',
+  },
+  actions: {
+    padding: 16,
+    paddingTop: 0,
+    gap: 12,
+  },
+  primaryButtonWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#4776E6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  approveButtonWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#27AE60',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  analyticsButtonWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#1a1a2e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   primaryButton: {
-    backgroundColor: '#3498DB',
     padding: 18,
-    borderRadius: 12,
-    marginBottom: 12,
     alignItems: 'center',
   },
   primaryButtonText: {
@@ -337,38 +440,24 @@ const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: '#FFFFFF',
     padding: 18,
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#3498DB',
+    borderColor: '#E8EBFF',
   },
   secondaryButtonText: {
-    color: '#3498DB',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  settingsButtonSecondary: {
-    backgroundColor: '#95A5A6',
-    padding: 18,
-    borderRadius: 12,
-    marginBottom: 12,
-    alignItems: 'center',
+    color: '#4776E6',
+    fontSize: 17,
+    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',
-    padding: 20,
-    marginTop: 20,
-    marginBottom: 40,
+    padding: 24,
+    paddingTop: 12,
+    marginBottom: 20,
   },
   footerText: {
     fontSize: 12,
-    color: '#95A5A6',
-    marginBottom: 4,
-  },
-  footerBrand: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#3498DB',
+    color: '#B0B8D4',
   },
 });

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   Switch,
   ActivityIndicator,
   Image,
@@ -13,6 +12,7 @@ import {
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../utils/alert';
 
 export default function SettingsScreen({ navigation }: any) {
   const { user, logout, linkedUserId } = useAuth();
@@ -54,7 +54,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleLogout = () => {
-    Alert.alert(
+    showAlert(
       'התנתקות',
       'האם אתה בטוח שברצונך להתנתק?',
       [
@@ -67,7 +67,7 @@ export default function SettingsScreen({ navigation }: any) {
               await logout();
               // Navigation will be handled automatically by AuthContext
             } catch (error) {
-              Alert.alert('שגיאה', 'לא הצלחנו להתנתק');
+              showAlert('שגיאה', 'לא הצלחנו להתנתק');
             }
           },
         },
@@ -76,7 +76,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleUnlinkChild = () => {
-    Alert.alert(
+    showAlert(
       'ניתוק ילד',
       `האם אתה בטוח שברצונך לנתק את ${childName}? תצטרך לחבר אותו שוב עם קוד חדש.`,
       [
@@ -98,11 +98,11 @@ export default function SettingsScreen({ navigation }: any) {
                 });
               }
 
-              Alert.alert('הצלחה', 'הילד נותק בהצלחה', [
+              showAlert('הצלחה', 'הילד נותק בהצלחה', [
                 { text: 'אישור', onPress: () => navigation.goBack() },
               ]);
             } catch (error) {
-              Alert.alert('שגיאה', 'לא הצלחנו לנתק את הילד');
+              showAlert('שגיאה', 'לא הצלחנו לנתק את הילד');
             }
           },
         },
@@ -111,7 +111,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleAbout = () => {
-    Alert.alert(
+    showAlert(
       'אודות האפליקציה',
       `לצאת מעונש v1.0.0\n\n` +
       `אפליקציה לניהול עונשים ומשימות בין הורים לילדים.\n\n` +
@@ -123,7 +123,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleHelp = () => {
-    Alert.alert(
+    showAlert(
       'עזרה ותמיכה',
       `איך משתמשים באפליקציה?\n\n` +
       `1️⃣ חבר את הילד שלך באמצעות קוד הקישור\n` +
@@ -137,7 +137,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handlePrivacy = () => {
-    Alert.alert(
+    showAlert(
       'מדיניות פרטיות',
       `אנחנו מכבדים את הפרטיות שלך!\n\n` +
       `✅ המידע שלך מאובטח ב-Firebase\n` +
@@ -149,7 +149,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showAlert(
       '⚠️ מחיקת חשבון',
       'פעולה זו תמחק לצמיתות את החשבון והנתונים שלך. האם אתה בטוח?',
       [
@@ -158,7 +158,7 @@ export default function SettingsScreen({ navigation }: any) {
           text: 'מחק לצמיתות',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
+            showAlert(
               'אישור סופי',
               'זו הזדמנות אחרונה! פעולה זו בלתי הפיכה.',
               [
@@ -169,7 +169,7 @@ export default function SettingsScreen({ navigation }: any) {
                   onPress: async () => {
                     // TODO: Implement account deletion
                     // This would require Cloud Functions to properly delete user data
-                    Alert.alert(
+                    showAlert(
                       'בקרוב',
                       'מחיקת חשבון תהיה זמינה בגרסה הבאה. אנא צור קשר עם התמיכה.'
                     );

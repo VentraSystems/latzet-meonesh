@@ -1,11 +1,9 @@
-// Generate a random 6-digit linking code
+import { doc, setDoc, getDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { db } from '../config/firebase';
+
 export const generateLinkingCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
-
-// Store linking code in Firestore (temporary, expires in 10 minutes)
-import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
 
 export const createLinkingCode = async (parentId: string): Promise<string> => {
   const code = generateLinkingCode();
@@ -42,8 +40,13 @@ export const verifyAndUseLinkingCode = async (
     return { success: false, error: 'הקוד פג תוקף' };
   }
 
-  // Mark as used and delete
+  // Delete the code and create pending-link signal (includes arrayUnion flag for multi-child)
   await deleteDoc(doc(db, 'linkingCodes', code));
+  await setDoc(doc(db, 'linkingCodes', `pending_${data.parentId}`), {
+    childId,
+    parentId: data.parentId,
+    createdAt: new Date(),
+  });
 
   return { success: true, parentId: data.parentId };
 };

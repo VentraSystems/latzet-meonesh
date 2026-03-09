@@ -84,6 +84,11 @@ export function useNotifications(userId?: string): NotificationHookReturn {
 }
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
+  // Push notifications are not supported on web
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
   let token: string | null = null;
 
   if (Platform.OS === 'android') {

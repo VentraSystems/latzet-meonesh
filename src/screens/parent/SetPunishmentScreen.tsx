@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,125 +6,285 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
-import { collection, addDoc } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { collection, addDoc, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { taskPresets, quizPresets } from '../../data/taskPresets';
+import { taskPresets } from '../../data/taskPresets';
 import { notifyNewPunishment } from '../../utils/notifications';
+import { showAlert } from '../../utils/alert';
+
+const AI_QUIZ_URL = 'https://meonesh.ventrasystems.com/api/generate-quiz';
+const AI_SUGGEST_URL = 'https://meonesh.ventrasystems.com/api/suggest-tasks';
+
+const AI_SUBJECTS = [
+  { id: 'math',      label: 'מתמטיקה',   icon: '🔢', color: '#E74C3C' },
+  { id: 'hebrew',    label: 'עברית',      icon: '📖', color: '#9B59B6' },
+  { id: 'english',   label: 'אנגלית',     icon: '🇬🇧', color: '#3498DB' },
+  { id: 'science',   label: 'מדעים',      icon: '🔬', color: '#27AE60' },
+  { id: 'bible',     label: 'תנ"ך',       icon: '📜', color: '#E67E22' },
+  { id: 'history',   label: 'היסטוריה',   icon: '🏛️', color: '#795548' },
+  { id: 'geography', label: 'גיאוגרפיה',  icon: '🌍', color: '#00BCD4' },
+  { id: 'general',   label: 'ידע כללי',   icon: '🧠', color: '#F39C12' },
+];
+
+const DIFFICULTIES = [
+  { id: 'easy',   label: 'קל 😊' },
+  { id: 'medium', label: 'בינוני 🤔' },
+  { id: 'hard',   label: 'קשה 💪' },
+];
+
+const GRADES = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'];
+
+interface AiQuizConfig {
+  subject: string;
+  difficulty: string;
+  grade: number; // 1-12
+}
 
 export default function SetPunishmentScreen({ navigation }: any) {
   const [punishmentName, setPunishmentName] = useState('');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [customTask, setCustomTask] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('');
+
+  // Child info
+  const [childName, setChildName] = useState('');
+  const [childGrade, setChildGrade] = useState(4);
+
+  // AI suggestions
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
+
+  // AI quiz: which subject card is expanded for config
+  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  // Map of subjectId -> config for added quizzes
+  const [aiQuizzes, setAiQuizzes] = useState<Record<string, AiQuizConfig>>({});
+  // Temporary config while selecting
+  const [tempDifficulty, setTempDifficulty] = useState('easy');
+  const [tempGrade, setTempGrade] = useState(4);
+
   const { user, linkedUserId } = useAuth();
 
-  const toggleTask = (taskId: string) => {
-    if (selectedTasks.includes(taskId)) {
-      setSelectedTasks(selectedTasks.filter((id) => id !== taskId));
-    } else {
-      setSelectedTasks([...selectedTasks, taskId]);
+  useEffect(() => {
+    if (!linkedUserId) return;
+    getDoc(doc(db, 'users', linkedUserId)).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setChildName(data.name || '');
+        setChildGrade(data.grade || 4);
+      }
+    });
+  }, [linkedUserId]);
+
+  const fetchAiSuggestions = async () => {
+    setLoadingSuggestions(true);
+    setAiSuggestions([]);
+    setSelectedSuggestionIds([]);
+    try {
+      const resp = await fetch(AI_SUGGEST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grade: childGrade, age: childGrade + 5, childName: childName || 'הילד' }),
+      });
+      const data = await resp.json();
+      if (!data.success || !data.tasks) throw new Error('שגיאה בקבלת הצעות');
+      setAiSuggestions(data.tasks.map((t: any, i: number) => ({ ...t, _id: `ai-suggest-${Date.now()}-${i}` })));
+    } catch {
+      showAlert('שגיאה', 'לא הצלחנו לקבל הצעות AI. נסה שוב.');
+    } finally {
+      setLoadingSuggestions(false);
     }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestionIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleTask = (taskId: string) => {
+    setSelectedTasks((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
   };
 
   const addCustomTask = () => {
     if (customTask.trim()) {
-      setSelectedTasks([...selectedTasks, `custom-${Date.now()}-${customTask}`]);
+      setSelectedTasks((prev) => [...prev, `custom-${Date.now()}-${customTask}`]);
       setCustomTask('');
     }
   };
 
+  const openSubject = (subjectId: string) => {
+    if (expandedSubject === subjectId) {
+      setExpandedSubject(null);
+      return;
+    }
+    // Pre-fill with existing config if already added
+    if (aiQuizzes[subjectId]) {
+      setTempDifficulty(aiQuizzes[subjectId].difficulty);
+      setTempGrade(aiQuizzes[subjectId].grade);
+    } else {
+      setTempDifficulty('easy');
+      setTempGrade(childGrade);
+    }
+    setExpandedSubject(subjectId);
+  };
+
+  const confirmAddQuiz = (subjectId: string) => {
+    setAiQuizzes((prev) => ({
+      ...prev,
+      [subjectId]: { subject: subjectId, difficulty: tempDifficulty, grade: tempGrade },
+    }));
+    setExpandedSubject(null);
+  };
+
+  const removeQuiz = (subjectId: string) => {
+    setAiQuizzes((prev) => {
+      const next = { ...prev };
+      delete next[subjectId];
+      return next;
+    });
+  };
+
+  const totalCount = selectedTasks.length + Object.keys(aiQuizzes).length + selectedSuggestionIds.length;
+
   const createPunishment = async () => {
     if (!punishmentName.trim()) {
-      Alert.alert('שגיאה', 'נא להזין שם לעונש');
+      showAlert('שגיאה', 'נא להזין שם לעונש');
       return;
     }
-
-    if (selectedTasks.length === 0) {
-      Alert.alert('שגיאה', 'נא לבחור לפחות משימה אחת');
+    if (totalCount === 0) {
+      showAlert('שגיאה', 'נא לבחור לפחות משימה אחת');
       return;
     }
-
     if (!linkedUserId) {
-      Alert.alert('שגיאה', 'לא מחובר לילד. נא לחבר ילד תחילה');
+      showAlert('שגיאה', 'לא מחובר לילד. נא לחבר ילד תחילה');
       return;
     }
 
     setLoading(true);
-    try {
-      // Create tasks
-      const tasks = selectedTasks.map((taskId) => {
-        const preset = taskPresets.find((t) => t.id === taskId);
-        const quiz = quizPresets.find((q) => q.id === taskId);
 
+    try {
+      // Generate all AI quizzes in parallel
+      const aiSubjectIds = Object.keys(aiQuizzes);
+      let generatedQuizzes: Record<string, any> = {};
+
+      if (aiSubjectIds.length > 0) {
+        setLoadingMsg(`מייצר ${aiSubjectIds.length} חידון AI...`);
+        const results = await Promise.all(
+          aiSubjectIds.map(async (subjectId) => {
+            const cfg = aiQuizzes[subjectId];
+            const resp = await fetch(AI_QUIZ_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                subject: cfg.subject,
+                difficulty: cfg.difficulty,
+                grade: cfg.grade,
+                count: 5,
+              }),
+            });
+            const data = await resp.json();
+            if (!data.success) throw new Error(`שגיאה ביצירת חידון ${subjectId}`);
+            return { subjectId, data };
+          })
+        );
+        results.forEach(({ subjectId, data }) => {
+          generatedQuizzes[subjectId] = data;
+        });
+      }
+
+      setLoadingMsg('שומר עונש...');
+
+      // Build preset tasks
+      const presetTasks = selectedTasks.map((taskId) => {
+        const preset = taskPresets.find((t) => t.id === taskId);
         if (preset) {
-          return {
-            id: taskId,
-            title: preset.title,
-            description: preset.description,
-            type: preset.type,
-            status: 'pending',
-          };
-        } else if (quiz) {
-          return {
-            id: taskId,
-            title: quiz.title,
-            description: `חידון ${quiz.subject}`,
-            type: 'quiz',
-            status: 'pending',
-            quizData: quiz,
-          };
-        } else {
-          // Custom task
-          const customTitle = taskId.split('-').slice(2).join('-');
-          return {
-            id: taskId,
-            title: customTitle,
-            description: 'משימה מותאמת אישית',
-            type: 'task',
-            status: 'pending',
-          };
+          return { id: taskId, title: preset.title, description: preset.description, type: preset.type, status: 'pending' };
         }
+        // Custom
+        const customTitle = taskId.split('-').slice(2).join('-');
+        return { id: taskId, title: customTitle, description: 'משימה מותאמת אישית', type: 'task', status: 'pending' };
       });
 
-      // Create punishment document
+      // Build AI quiz tasks
+      const aiTasks = aiSubjectIds.map((subjectId) => {
+        const cfg = aiQuizzes[subjectId];
+        const qdata = generatedQuizzes[subjectId];
+        const subject = AI_SUBJECTS.find((s) => s.id === subjectId);
+        const diffLabel = DIFFICULTIES.find((d) => d.id === cfg.difficulty)?.label || cfg.difficulty;
+        const gradeLabel = GRADES[cfg.grade - 1] || String(cfg.grade);
+        return {
+          id: `ai-quiz-${subjectId}-${Date.now()}`,
+          title: `${subject?.icon} חידון ${subject?.label} - כיתה ${gradeLabel}`,
+          description: `${diffLabel} • 5 שאלות • נוצר ע"י AI`,
+          type: 'quiz',
+          status: 'pending',
+          quizData: {
+            id: `ai-quiz-${subjectId}`,
+            title: `חידון ${qdata.subjectName}`,
+            subject: qdata.subjectName,
+            difficulty: cfg.difficulty,
+            questions: qdata.questions,
+          },
+        };
+      });
+
+      // Build AI suggested tasks
+      const suggestionTasks = selectedSuggestionIds.map((id) => {
+        const s = aiSuggestions.find((x) => x._id === id);
+        if (!s) return null;
+        return {
+          id,
+          title: `${s.emoji || '📋'} ${s.title}`,
+          description: s.description,
+          type: s.type || 'task',
+          status: 'pending',
+          estimatedMinutes: s.estimatedMinutes,
+        };
+      }).filter(Boolean);
+
+      const allTasks = [...presetTasks, ...aiTasks, ...suggestionTasks];
+
       const punishmentRef = await addDoc(collection(db, 'punishments'), {
         name: punishmentName,
         parentId: user!.uid,
         childId: linkedUserId,
-        tasks,
+        tasks: allTasks,
         status: 'active',
         createdAt: new Date(),
-        requiredTasksCount: tasks.length,
+        requiredTasksCount: allTasks.length,
       });
 
-      // Send push notification to child
-      await notifyNewPunishment(
-        linkedUserId,
-        punishmentName,
-        tasks.length,
-        punishmentRef.id
-      );
+      await notifyNewPunishment(linkedUserId, punishmentName, allTasks.length, punishmentRef.id);
 
-      Alert.alert('הצלחה! 🎉', 'העונש נוצר והילד יקבל התראה', [
+      showAlert('הצלחה! 🎉', `העונש נוצר עם ${allTasks.length} משימות`, [
         { text: 'אישור', onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      Alert.alert('שגיאה', 'לא הצלחנו ליצור את העונש');
+      showAlert('שגיאה', error.message || 'לא הצלחנו ליצור את העונש');
     } finally {
       setLoading(false);
+      setLoadingMsg('');
     }
   };
+
+  const choreTasks = taskPresets.filter((t) => t.category === 'chores');
+  const behaviorTasks = taskPresets.filter((t) => t.category === 'behavior');
 
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>הגדר עונש חדש</Text>
 
+      {/* Punishment name */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>שם העונש</Text>
+        <Text style={styles.sectionTitle}>📝 שם העונש</Text>
         <TextInput
           style={styles.input}
           placeholder='למשל: "אין טלפון לשעתיים"'
@@ -134,132 +294,237 @@ export default function SetPunishmentScreen({ navigation }: any) {
         />
       </View>
 
+      {/* Summary badge */}
+      {totalCount > 0 && (
+        <View style={styles.summaryBadge}>
+          <Text style={styles.summaryText}>✅ {totalCount} משימות נבחרו</Text>
+        </View>
+      )}
+
+      {/* Chores */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          בחר משימות ({selectedTasks.length} נבחרו)
-        </Text>
+        <Text style={styles.sectionTitle}>🏠 עבודות בית</Text>
+        <View style={styles.taskGrid}>
+          {choreTasks.map((task) => {
+            const selected = selectedTasks.includes(task.id);
+            return (
+              <TouchableOpacity
+                key={task.id}
+                style={[styles.taskCard, selected && styles.taskCardSelected]}
+                onPress={() => toggleTask(task.id)}
+              >
+                <Text style={styles.taskCardIcon}>{task.icon}</Text>
+                <Text style={[styles.taskCardTitle, selected && styles.taskCardTitleSelected]}>
+                  {task.title}
+                </Text>
+                {selected && <Text style={styles.taskCardCheck}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-        <Text style={styles.categoryTitle}>🏠 עבודות בית</Text>
-        {taskPresets
-          .filter((t) => t.category === 'chores')
-          .map((task) => (
-            <TouchableOpacity
-              key={task.id}
-              style={[
-                styles.taskItem,
-                selectedTasks.includes(task.id) && styles.taskSelected,
-              ]}
-              onPress={() => toggleTask(task.id)}
-            >
-              <Text style={styles.taskIcon}>{task.icon}</Text>
-              <View style={styles.taskInfo}>
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <Text style={styles.taskDescription}>{task.description}</Text>
+      {/* Behavior */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🤝 התנהגות</Text>
+        <View style={styles.taskGrid}>
+          {behaviorTasks.map((task) => {
+            const selected = selectedTasks.includes(task.id);
+            return (
+              <TouchableOpacity
+                key={task.id}
+                style={[styles.taskCard, selected && styles.taskCardSelected]}
+                onPress={() => toggleTask(task.id)}
+              >
+                <Text style={styles.taskCardIcon}>{task.icon}</Text>
+                <Text style={[styles.taskCardTitle, selected && styles.taskCardTitleSelected]}>
+                  {task.title}
+                </Text>
+                {selected && <Text style={styles.taskCardCheck}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* AI Learning Quizzes */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🤖 חידוני למידה — נוצרים ע"י AI</Text>
+        <Text style={styles.sectionHint}>לחץ על נושא להגדרת חידון ייחודי. ניתן להוסיף מספר נושאים!</Text>
+
+        <View style={styles.subjectGrid}>
+          {AI_SUBJECTS.map((subject) => {
+            const isAdded = !!aiQuizzes[subject.id];
+            const isExpanded = expandedSubject === subject.id;
+            return (
+              <View key={subject.id} style={styles.subjectCardWrap}>
+                <TouchableOpacity
+                  style={[
+                    styles.subjectCard,
+                    { borderColor: subject.color },
+                    isAdded && { backgroundColor: subject.color },
+                    isExpanded && styles.subjectCardExpanded,
+                  ]}
+                  onPress={() => openSubject(subject.id)}
+                >
+                  <Text style={styles.subjectIcon}>{subject.icon}</Text>
+                  <Text style={[styles.subjectLabel, isAdded && styles.subjectLabelAdded]}>
+                    {subject.label}
+                  </Text>
+                  {isAdded && (
+                    <TouchableOpacity
+                      style={styles.removeBadge}
+                      onPress={(e) => { e.stopPropagation?.(); removeQuiz(subject.id); }}
+                    >
+                      <Text style={styles.removeBadgeText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+
+                {/* Expanded config panel */}
+                {isExpanded && (
+                  <View style={[styles.configPanel, { borderColor: subject.color }]}>
+                    <Text style={styles.configTitle}>הגדרות חידון {subject.icon} {subject.label}</Text>
+
+                    <Text style={styles.configLabel}>רמת קושי:</Text>
+                    <View style={styles.pillRow}>
+                      {DIFFICULTIES.map((d) => (
+                        <TouchableOpacity
+                          key={d.id}
+                          style={[styles.pill, tempDifficulty === d.id && { backgroundColor: subject.color, borderColor: subject.color }]}
+                          onPress={() => setTempDifficulty(d.id)}
+                        >
+                          <Text style={[styles.pillText, tempDifficulty === d.id && styles.pillTextSelected]}>
+                            {d.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text style={styles.configLabel}>כיתה:</Text>
+                    <View style={styles.pillRow}>
+                      {GRADES.map((g, i) => (
+                        <TouchableOpacity
+                          key={g}
+                          style={[styles.pill, styles.pillGrade, tempGrade === i + 1 && { backgroundColor: subject.color, borderColor: subject.color }]}
+                          onPress={() => setTempGrade(i + 1)}
+                        >
+                          <Text style={[styles.pillText, tempGrade === i + 1 && styles.pillTextSelected]}>{g}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.confirmButton, { backgroundColor: subject.color }]}
+                      onPress={() => confirmAddQuiz(subject.id)}
+                    >
+                      <Text style={styles.confirmButtonText}>
+                        {isAdded ? '✅ עדכן חידון' : `✨ הוסף חידון ${subject.label}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Show config summary when added */}
+                {isAdded && !isExpanded && (
+                  <View style={styles.addedSummary}>
+                    <Text style={styles.addedSummaryText}>
+                      כיתה {GRADES[aiQuizzes[subject.id].grade - 1]} • {DIFFICULTIES.find(d => d.id === aiQuizzes[subject.id].difficulty)?.label}
+                    </Text>
+                  </View>
+                )}
               </View>
-              {selectedTasks.includes(task.id) && (
-                <Text style={styles.checkMark}>✓</Text>
-              )}
-            </TouchableOpacity>
-          ))}
+            );
+          })}
+        </View>
+      </View>
 
-        <Text style={styles.categoryTitle}>📚 שיעורי בית</Text>
-        {taskPresets
-          .filter((t) => t.category === 'homework')
-          .map((task) => (
-            <TouchableOpacity
-              key={task.id}
-              style={[
-                styles.taskItem,
-                selectedTasks.includes(task.id) && styles.taskSelected,
-              ]}
-              onPress={() => toggleTask(task.id)}
-            >
-              <Text style={styles.taskIcon}>{task.icon}</Text>
-              <View style={styles.taskInfo}>
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <Text style={styles.taskDescription}>{task.description}</Text>
+      {/* AI Task Suggestions */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🎲 הפתיעו אותי — AI מציע משימות</Text>
+        <Text style={styles.sectionHint}>AI יציע 6 משימות מותאמות אישית לגיל ולכיתה של הילד</Text>
+
+        <TouchableOpacity onPress={fetchAiSuggestions} disabled={loadingSuggestions} style={styles.surpriseButtonWrap}>
+          <LinearGradient colors={['#8E54E9', '#4776E6']} style={styles.surpriseButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            {loadingSuggestions ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={styles.surpriseButtonText}>מייצר הצעות...</Text>
               </View>
-              {selectedTasks.includes(task.id) && (
-                <Text style={styles.checkMark}>✓</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-
-        <Text style={styles.categoryTitle}>🎓 חידונים לימודיים</Text>
-        <Text style={styles.quizInfo}>הילד ילמד תוך כדי יציאה מהעונש!</Text>
-        {quizPresets.map((quiz) => (
-          <TouchableOpacity
-            key={quiz.id}
-            style={[
-              styles.taskItem,
-              styles.quizItem,
-              selectedTasks.includes(quiz.id) && styles.taskSelected,
-            ]}
-            onPress={() => toggleTask(quiz.id)}
-          >
-            <Text style={styles.taskIcon}>🧠</Text>
-            <View style={styles.taskInfo}>
-              <Text style={styles.taskTitle}>{quiz.title}</Text>
-              <Text style={styles.taskDescription}>
-                {quiz.questions.length} שאלות • {quiz.difficulty === 'easy' ? 'קל' : quiz.difficulty === 'medium' ? 'בינוני' : 'מתקדם'}
-              </Text>
-            </View>
-            {selectedTasks.includes(quiz.id) && (
-              <Text style={styles.checkMark}>✓</Text>
+            ) : (
+              <Text style={styles.surpriseButtonText}>🎲 הפתיעו אותי!</Text>
             )}
-          </TouchableOpacity>
-        ))}
+          </LinearGradient>
+        </TouchableOpacity>
 
-        <Text style={styles.categoryTitle}>✏️ משימה מותאמת אישית</Text>
-        <View style={styles.customTaskContainer}>
+        {aiSuggestions.length > 0 && (
+          <View style={styles.suggestionsGrid}>
+            {aiSuggestions.map((s) => {
+              const isSelected = selectedSuggestionIds.includes(s._id);
+              return (
+                <TouchableOpacity
+                  key={s._id}
+                  style={[styles.suggestionCard, isSelected && styles.suggestionCardSelected]}
+                  onPress={() => toggleSuggestion(s._id)}
+                >
+                  <Text style={styles.suggestionEmoji}>{s.emoji || '📋'}</Text>
+                  <Text style={[styles.suggestionTitle, isSelected && styles.suggestionTitleSelected]}>
+                    {s.title}
+                  </Text>
+                  <Text style={styles.suggestionDesc} numberOfLines={2}>{s.description}</Text>
+                  <Text style={styles.suggestionTime}>⏱ {s.estimatedMinutes} דק'</Text>
+                  {isSelected && <Text style={styles.suggestionCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </View>
+
+      {/* Custom task */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>✏️ משימה מותאמת אישית</Text>
+        <View style={styles.customTaskRow}>
+          <TouchableOpacity style={styles.addButton} onPress={addCustomTask}>
+            <Text style={styles.addButtonText}>+ הוסף</Text>
+          </TouchableOpacity>
           <TextInput
             style={styles.customInput}
-            placeholder="כתוב משימה מותאמת אישית..."
+            placeholder="כתוב משימה..."
             value={customTask}
             onChangeText={setCustomTask}
             textAlign="right"
           />
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={addCustomTask}
-          >
-            <Text style={styles.addButtonText}>הוסף +</Text>
-          </TouchableOpacity>
         </View>
-
-        {selectedTasks
-          .filter((id) => id.startsWith('custom-'))
-          .map((id) => (
-            <View key={id} style={[styles.taskItem, styles.taskSelected]}>
-              <Text style={styles.taskIcon}>✏️</Text>
-              <View style={styles.taskInfo}>
-                <Text style={styles.taskTitle}>
-                  {id.split('-').slice(2).join('-')}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => toggleTask(id)}>
-                <Text style={styles.removeButton}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+        {selectedTasks.filter((id) => id.startsWith('custom-')).map((id) => (
+          <View key={id} style={styles.customChip}>
+            <TouchableOpacity onPress={() => toggleTask(id)}>
+              <Text style={styles.customChipRemove}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.customChipText}>{id.split('-').slice(2).join('-')}</Text>
+          </View>
+        ))}
       </View>
 
+      {/* Create button */}
       <TouchableOpacity
-        style={styles.createButton}
+        style={[styles.createButton, totalCount === 0 && styles.createButtonDisabled]}
         onPress={createPunishment}
-        disabled={loading}
+        disabled={loading || totalCount === 0}
       >
         {loading ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#FFFFFF" />
+            <Text style={styles.loadingText}>{loadingMsg || 'יוצר...'}</Text>
+          </View>
         ) : (
-          <Text style={styles.createButtonText}>צור עונש ושלח לילד</Text>
+          <Text style={styles.createButtonText}>
+            🚀 צור עונש ושלח לילד ({totalCount} משימות)
+          </Text>
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.cancelButton}
-        onPress={() => navigation.goBack()}
-      >
+      <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
         <Text style={styles.cancelButtonText}>ביטול</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -267,142 +532,91 @@ export default function SetPunishmentScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-    padding: 20,
+  container: { flex: 1, backgroundColor: '#F5F7FA', padding: 16 },
+  title: { fontSize: 26, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center', marginTop: 16, marginBottom: 20 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 8 },
+  sectionHint: { fontSize: 13, color: '#7F8C8D', textAlign: 'right', marginBottom: 12 },
+  input: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, fontSize: 16, borderWidth: 1, borderColor: '#E0E0E0' },
+  summaryBadge: { backgroundColor: '#27AE60', borderRadius: 20, padding: 10, alignItems: 'center', marginBottom: 16 },
+  summaryText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 },
+
+  // Task grid (chores/behavior)
+  taskGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  taskCard: {
+    width: '47%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14,
+    alignItems: 'center', borderWidth: 2, borderColor: '#E0E0E0', position: 'relative',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 30,
+  taskCardSelected: { borderColor: '#27AE60', backgroundColor: '#E8F8F5' },
+  taskCardIcon: { fontSize: 28, marginBottom: 6 },
+  taskCardTitle: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center' },
+  taskCardTitleSelected: { color: '#27AE60' },
+  taskCardCheck: { position: 'absolute', top: 6, left: 8, fontSize: 16, color: '#27AE60', fontWeight: 'bold' },
+
+  // Subject grid (AI quizzes)
+  subjectGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  subjectCardWrap: { width: '47%' },
+  subjectCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 2,
+    alignItems: 'center', position: 'relative',
   },
-  section: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 12,
-    textAlign: 'right',
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  categoryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#3498DB',
-    marginTop: 20,
-    marginBottom: 12,
-    textAlign: 'right',
-  },
-  quizInfo: {
-    fontSize: 14,
-    color: '#27AE60',
-    marginBottom: 12,
-    textAlign: 'right',
-    fontStyle: 'italic',
-  },
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  quizItem: {
-    backgroundColor: '#FFF9E6',
-  },
-  taskSelected: {
-    borderColor: '#27AE60',
-    backgroundColor: '#E8F8F5',
-  },
-  taskIcon: {
-    fontSize: 30,
-    marginLeft: 12,
-  },
-  taskInfo: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'right',
+  subjectCardExpanded: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  subjectIcon: { fontSize: 28, marginBottom: 6 },
+  subjectLabel: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center' },
+  subjectLabelAdded: { color: '#FFFFFF' },
+  removeBadge: { position: 'absolute', top: 4, left: 6, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  removeBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' },
+  addedSummary: { backgroundColor: '#F8F9FA', borderRadius: 8, padding: 6, alignItems: 'center', marginTop: 4 },
+  addedSummaryText: { fontSize: 11, color: '#7F8C8D' },
+
+  // Config panel
+  configPanel: {
+    backgroundColor: '#FAFAFA', borderWidth: 2, borderTopWidth: 0,
+    borderBottomLeftRadius: 12, borderBottomRightRadius: 12, padding: 14,
     marginBottom: 4,
   },
-  taskDescription: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    textAlign: 'right',
+  configTitle: { fontSize: 14, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center', marginBottom: 10 },
+  configLabel: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 6, marginTop: 8 },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end' },
+  pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: '#ECF0F1', borderWidth: 1, borderColor: '#BDC3C7' },
+  pillGrade: { paddingHorizontal: 8, minWidth: 32, alignItems: 'center' },
+  pillText: { fontSize: 12, color: '#2C3E50' },
+  pillTextSelected: { color: '#FFFFFF', fontWeight: 'bold' },
+  confirmButton: { borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 14 },
+  confirmButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
+
+  // Custom task
+  customTaskRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  customInput: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, fontSize: 15, borderWidth: 1, borderColor: '#E0E0E0' },
+  addButton: { backgroundColor: '#3498DB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  addButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+  customChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F8F5', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginTop: 8, gap: 8, borderWidth: 1, borderColor: '#27AE60' },
+  customChipText: { flex: 1, color: '#2C3E50', fontSize: 14, textAlign: 'right' },
+  customChipRemove: { color: '#E74C3C', fontWeight: 'bold', fontSize: 16 },
+
+  // AI Suggestions
+  surpriseButtonWrap: { borderRadius: 14, overflow: 'hidden', marginBottom: 12 },
+  surpriseButton: { padding: 16, alignItems: 'center', borderRadius: 14 },
+  surpriseButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: 'bold' },
+  suggestionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  suggestionCard: {
+    width: '47%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12,
+    borderWidth: 2, borderColor: '#E0E0E0', position: 'relative',
   },
-  checkMark: {
-    fontSize: 24,
-    color: '#27AE60',
-    fontWeight: 'bold',
-  },
-  customTaskContainer: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  customInput: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    marginLeft: 10,
-  },
-  addButton: {
-    backgroundColor: '#3498DB',
-    borderRadius: 12,
-    padding: 16,
-    justifyContent: 'center',
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  removeButton: {
-    fontSize: 24,
-    color: '#E74C3C',
-    fontWeight: 'bold',
-  },
-  createButton: {
-    backgroundColor: '#27AE60',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  cancelButton: {
-    padding: 12,
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  cancelButtonText: {
-    color: '#7F8C8D',
-    fontSize: 16,
-  },
+  suggestionCardSelected: { borderColor: '#8E54E9', backgroundColor: '#F3EEFF' },
+  suggestionEmoji: { fontSize: 24, marginBottom: 4 },
+  suggestionTitle: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 4 },
+  suggestionTitleSelected: { color: '#8E54E9' },
+  suggestionDesc: { fontSize: 11, color: '#7F8C8D', textAlign: 'right', lineHeight: 16 },
+  suggestionTime: { fontSize: 11, color: '#95A5A6', marginTop: 6, textAlign: 'right' },
+  suggestionCheck: { position: 'absolute', top: 6, left: 8, fontSize: 16, color: '#8E54E9', fontWeight: 'bold' },
+
+  // Buttons
+  createButton: { backgroundColor: '#27AE60', borderRadius: 14, padding: 18, alignItems: 'center', marginBottom: 12 },
+  createButtonDisabled: { backgroundColor: '#95A5A6' },
+  createButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  loadingText: { color: '#FFFFFF', fontSize: 15 },
+  cancelButton: { padding: 12, alignItems: 'center', marginBottom: 40 },
+  cancelButtonText: { color: '#7F8C8D', fontSize: 16 },
 });

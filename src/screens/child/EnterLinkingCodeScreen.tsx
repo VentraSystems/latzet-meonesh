@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { verifyAndUseLinkingCode } from '../../utils/linkingCode';
+import { showAlert } from '../../utils/alert';
 
 export default function EnterLinkingCodeScreen({ navigation }: any) {
   const [code, setCode] = useState('');
@@ -20,7 +20,7 @@ export default function EnterLinkingCodeScreen({ navigation }: any) {
 
   const handleSubmit = async () => {
     if (!user || !code || code.length !== 6) {
-      Alert.alert('שגיאה', 'נא להזין קוד בן 6 ספרות');
+      showAlert('שגיאה', 'נא להזין קוד בן 6 ספרות');
       return;
     }
 
@@ -29,28 +29,24 @@ export default function EnterLinkingCodeScreen({ navigation }: any) {
       const result = await verifyAndUseLinkingCode(code, user.uid);
 
       if (!result.success) {
-        Alert.alert('שגיאה', result.error || 'קוד לא תקין');
+        showAlert('שגיאה', result.error || 'קוד לא תקין');
         setLoading(false);
         return;
       }
 
-      // Link child to parent
+      // Link child to parent (child updates their own doc — allowed by rules)
       await updateDoc(doc(db, 'users', user.uid), {
         linkedUserId: result.parentId,
       });
+      // Parent picks up the link via the pending signal in AuthContext
 
-      // Link parent to child
-      await updateDoc(doc(db, 'users', result.parentId!), {
-        linkedUserId: user.uid,
-      });
-
-      Alert.alert(
+      showAlert(
         'הצלחה! 🎉',
         'חוברת בהצלחה להורה שלך!',
         [{ text: 'אישור', onPress: () => navigation.replace('ChildFlow') }]
       );
     } catch (error: any) {
-      Alert.alert('שגיאה', 'משהו השתבש. נסה שוב');
+      showAlert('שגיאה', 'משהו השתבש. נסה שוב');
     } finally {
       setLoading(false);
     }

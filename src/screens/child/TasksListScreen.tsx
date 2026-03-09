@@ -6,13 +6,18 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  Alert,
   ActivityIndicator,
+  Image,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { notifyTaskSubmitted } from '../../utils/notifications';
+import { showAlert } from '../../utils/alert';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function TasksListScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -20,6 +25,8 @@ export default function TasksListScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [taskNote, setTaskNote] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const q = query(
@@ -27,7 +34,6 @@ export default function TasksListScreen({ navigation }: any) {
       where('childId', '==', user!.uid),
       where('status', '==', 'active')
     );
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
         const punishmentData = snapshot.docs[0].data();
@@ -37,13 +43,70 @@ export default function TasksListScreen({ navigation }: any) {
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
+  const pickPhoto = async () => {
+    if (Platform.OS === 'web') {
+      // Web: use file input via image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert('אין הרשאה', 'נדרשת הרשאת גישה לגלריה');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    }
+  };
+
+  const takePhoto = async () => {
+    if (Platform.OS === 'web') { pickPhoto(); return; }
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      showAlert('אין הרשאה', 'נדרשת הרשאת גישה למצלמה');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
+  const uploadPhoto = async (uri: string, punishmentId: string, taskId: string): Promise<string | null> => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const storageRef = ref(storage, `task-photos/${punishmentId}/${taskId}/${Date.now()}.jpg`);
+      await uploadBytes(storageRef, blob);
+      return await getDownloadURL(storageRef);
+    } catch (e) {
+      console.error('Photo upload failed:', e);
+      return null;
+    }
+  };
+
   const handleTaskComplete = async (task: any) => {
     if (task.type === 'quiz') {
-      // Navigate to quiz screen
       navigation.navigate('Quiz', {
         quiz: task.quizData,
         punishmentId: activePunishment.id,
@@ -51,29 +114,38 @@ export default function TasksListScreen({ navigation }: any) {
       });
       return;
     }
-
     setSelectedTask(task);
+    setPhotoUri(null);
+    setTaskNote('');
   };
 
   const submitTask = async () => {
     if (!selectedTask) return;
+    setUploading(true);
 
     try {
+      let photoUrl: string | null = null;
+      if (photoUri) {
+        photoUrl = await uploadPhoto(photoUri, activePunishment.id, selectedTask.id);
+      }
+
       const updatedTasks = activePunishment.tasks.map((t: any) =>
         t.id === selectedTask.id
-          ? { ...t, status: 'submitted', submittedAt: new Date(), childNote: taskNote }
+          ? {
+              ...t,
+              status: 'submitted',
+              submittedAt: new Date(),
+              childNote: taskNote,
+              ...(photoUrl ? { photoUrl } : {}),
+            }
           : t
       );
 
-      await updateDoc(doc(db, 'punishments', activePunishment.id), {
-        tasks: updatedTasks,
-      });
+      await updateDoc(doc(db, 'punishments', activePunishment.id), { tasks: updatedTasks });
 
-      // Get child's name for notification
       const childDoc = await getDoc(doc(db, 'users', user!.uid));
       const childName = childDoc.exists() ? childDoc.data().name : 'הילד';
 
-      // Send notification to parent
       await notifyTaskSubmitted(
         activePunishment.parentId,
         childName,
@@ -82,17 +154,34 @@ export default function TasksListScreen({ navigation }: any) {
         selectedTask.id
       );
 
-      Alert.alert('נשלח! 🎉', 'המשימה נשלחה לאישור ההורה', [
+      showAlert('נשלח! 🎉', photoUrl ? 'המשימה נשלחה עם תמונת הוכחה!' : 'המשימה נשלחה לאישור ההורה', [
         {
           text: 'אישור',
-          onPress: () => {
-            setSelectedTask(null);
-            setTaskNote('');
-          },
+          onPress: () => { setSelectedTask(null); setTaskNote(''); setPhotoUri(null); },
         },
       ]);
     } catch (error) {
-      Alert.alert('שגיאה', 'לא הצלחנו לשלוח את המשימה');
+      showAlert('שגיאה', 'לא הצלחנו לשלוח את המשימה');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return '#27AE60';
+      case 'submitted': return '#F39C12';
+      case 'rejected': return '#E74C3C';
+      default: return '#7F8C8D';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'approved': return 'אושר ✅';
+      case 'submitted': return 'ממתין לאישור ⏳';
+      case 'rejected': return 'נדחה ❌';
+      default: return 'ממתין להגשה 📝';
     }
   };
 
@@ -114,41 +203,39 @@ export default function TasksListScreen({ navigation }: any) {
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return '#27AE60';
-      case 'submitted':
-        return '#F39C12';
-      case 'rejected':
-        return '#E74C3C';
-      default:
-        return '#7F8C8D';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'אושר ✅';
-      case 'submitted':
-        return 'ממתין לאישור ⏳';
-      case 'rejected':
-        return 'נדחה ❌';
-      default:
-        return 'ממתין להגשה 📝';
-    }
-  };
-
   if (selectedTask) {
     return (
       <View style={styles.container}>
-        <ScrollView style={styles.submitContainer}>
+        <ScrollView style={styles.submitContainer} showsVerticalScrollIndicator={false}>
           <Text style={styles.submitTitle}>השלמת את המשימה?</Text>
 
           <View style={styles.taskCard}>
             <Text style={styles.taskTitle}>{selectedTask.title}</Text>
             <Text style={styles.taskDescription}>{selectedTask.description}</Text>
+          </View>
+
+          {/* Photo Upload */}
+          <View style={styles.photoSection}>
+            <Text style={styles.photoSectionTitle}>📸 הוסף תמונת הוכחה (אופציונלי)</Text>
+            {photoUri ? (
+              <View style={styles.photoPreview}>
+                <Image source={{ uri: photoUri }} style={styles.photoImg} resizeMode="cover" />
+                <TouchableOpacity style={styles.removePhoto} onPress={() => setPhotoUri(null)}>
+                  <Text style={styles.removePhotoText}>✕ הסר תמונה</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.photoButtons}>
+                {Platform.OS !== 'web' && (
+                  <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
+                    <Text style={styles.photoBtnText}>📷 צלם תמונה</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto}>
+                  <Text style={styles.photoBtnText}>🖼️ בחר מהגלריה</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <Text style={styles.noteLabel}>הוסף הערה (אופציונלי)</Text>
@@ -162,16 +249,24 @@ export default function TasksListScreen({ navigation }: any) {
             textAlign="right"
           />
 
-          <TouchableOpacity style={styles.submitButton} onPress={submitTask}>
-            <Text style={styles.submitButtonText}>שלח לאישור ההורה</Text>
+          <TouchableOpacity
+            style={styles.submitWrapper}
+            onPress={submitTask}
+            disabled={uploading}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.submitButton}>
+              {uploading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitButtonText}>שלח לאישור ההורה {photoUri ? '📸' : ''}</Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.cancelButton}
-            onPress={() => {
-              setSelectedTask(null);
-              setTaskNote('');
-            }}
+            onPress={() => { setSelectedTask(null); setTaskNote(''); setPhotoUri(null); }}
           >
             <Text style={styles.cancelButtonText}>ביטול</Text>
           </TouchableOpacity>
@@ -180,40 +275,32 @@ export default function TasksListScreen({ navigation }: any) {
     );
   }
 
+  const approved = activePunishment.tasks.filter((t: any) => t.status === 'approved').length;
+  const total = activePunishment.tasks.length;
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>המשימות שלך</Text>
-      <Text style={styles.subtitle}>
-        {activePunishment.tasks.filter((t: any) => t.status === 'approved').length} מתוך{' '}
-        {activePunishment.tasks.length} הושלמו
-      </Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Text style={styles.title}>המשימות שלך</Text>
+        <View style={styles.progressPill}>
+          <Text style={styles.progressPillText}>{approved} / {total}</Text>
+        </View>
+      </View>
 
       {activePunishment.tasks.map((task: any) => (
-        <TouchableOpacity
+        <View
           key={task.id}
-          style={[
-            styles.taskCard,
-            task.status === 'approved' && styles.completedTaskCard,
-          ]}
-          onPress={() => task.status === 'pending' && handleTaskComplete(task)}
-          disabled={task.status !== 'pending'}
+          style={[styles.taskCard, task.status === 'approved' && styles.completedTaskCard]}
         >
           <View style={styles.taskHeader}>
-            <Text style={styles.taskIcon}>
-              {task.type === 'quiz' ? '🧠' : '📝'}
-            </Text>
+            <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : '📝'}</Text>
             <View style={styles.taskInfo}>
               <Text style={styles.taskTitle}>{task.title}</Text>
               <Text style={styles.taskDescription}>{task.description}</Text>
             </View>
           </View>
 
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: `${getStatusColor(task.status)}20` },
-            ]}
-          >
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
             <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
               {getStatusText(task.status)}
             </Text>
@@ -228,167 +315,95 @@ export default function TasksListScreen({ navigation }: any) {
 
           {task.status === 'pending' && (
             <TouchableOpacity
-              style={styles.startButton}
+              style={styles.startWrapper}
               onPress={() => handleTaskComplete(task)}
+              activeOpacity={0.85}
             >
-              <Text style={styles.startButtonText}>
-                {task.type === 'quiz' ? 'התחל חידון 🧠' : 'סמן כהושלם ✓'}
-              </Text>
+              <LinearGradient colors={['#c0392b', '#e74c3c']} style={styles.startButton}>
+                <Text style={styles.startButtonText}>
+                  {task.type === 'quiz' ? 'התחל חידון 🧠' : 'סמן כהושלם ✓'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
       ))}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-    padding: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  container: { flex: 1, backgroundColor: '#FFF5F5', padding: 16 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF5F5' },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF5F5', padding: 40 },
+  emptyEmoji: { fontSize: 80, marginBottom: 20 },
+  emptyTitle: { fontSize: 24, fontWeight: 'bold', color: '#2C3E50', marginBottom: 12, textAlign: 'center' },
+  emptyText: { fontSize: 16, color: '#7F8C8D', textAlign: 'center' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-    padding: 40,
-  },
-  emptyEmoji: {
-    fontSize: 80,
+    marginTop: 16,
     marginBottom: 20,
   },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 12,
-    textAlign: 'center',
+  title: { fontSize: 26, fontWeight: 'bold', color: '#2C3E50' },
+  progressPill: {
+    backgroundColor: '#E74C3C',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
+  progressPillText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 },
   taskCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 14,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   completedTaskCard: {
-    backgroundColor: '#E8F8F5',
+    backgroundColor: '#E8F8F0',
     borderWidth: 2,
     borderColor: '#27AE60',
   },
-  taskHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  taskIcon: {
-    fontSize: 30,
-    marginLeft: 12,
-  },
-  taskInfo: {
+  taskHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  taskIcon: { fontSize: 28, marginLeft: 12 },
+  taskInfo: { flex: 1 },
+  taskTitle: { fontSize: 17, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 4 },
+  taskDescription: { fontSize: 13, color: '#7F8C8D', textAlign: 'right' },
+  statusBadge: { padding: 10, borderRadius: 10, marginTop: 8 },
+  statusText: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  rejectionNote: { backgroundColor: '#FFE5E5', borderRadius: 10, padding: 12, marginTop: 10 },
+  rejectionLabel: { fontSize: 13, fontWeight: 'bold', color: '#E74C3C', marginBottom: 4, textAlign: 'right' },
+  rejectionText: { fontSize: 13, color: '#E74C3C', textAlign: 'right' },
+  startWrapper: { borderRadius: 12, overflow: 'hidden', marginTop: 12 },
+  startButton: { padding: 14, alignItems: 'center' },
+  startButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+  submitContainer: { padding: 20 },
+  submitTitle: { fontSize: 24, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center', marginTop: 20, marginBottom: 20 },
+  photoSection: { marginBottom: 20 },
+  photoSectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 12 },
+  photoButtons: { flexDirection: 'row', gap: 10 },
+  photoBtn: {
     flex: 1,
-  },
-  taskTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'right',
-    marginBottom: 6,
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    textAlign: 'right',
-  },
-  statusBadge: {
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  rejectionNote: {
-    backgroundColor: '#FFE5E5',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 12,
-  },
-  rejectionLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#E74C3C',
-    marginBottom: 6,
-    textAlign: 'right',
-  },
-  rejectionText: {
-    fontSize: 14,
-    color: '#E74C3C',
-    textAlign: 'right',
-  },
-  startButton: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 10,
+    backgroundColor: '#F0F2FF',
+    borderRadius: 12,
     padding: 14,
-    marginTop: 12,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#4776E6',
+    borderStyle: 'dashed',
   },
-  startButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  submitContainer: {
-    padding: 20,
-  },
-  submitTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  noteLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 10,
-    textAlign: 'right',
-  },
+  photoBtnText: { color: '#4776E6', fontSize: 15, fontWeight: '600' },
+  photoPreview: { borderRadius: 12, overflow: 'hidden' },
+  photoImg: { width: '100%', height: 200, borderRadius: 12 },
+  removePhoto: { backgroundColor: '#FFE5E5', padding: 10, alignItems: 'center', marginTop: 8, borderRadius: 10 },
+  removePhotoText: { color: '#E74C3C', fontWeight: 'bold' },
+  noteLabel: { fontSize: 16, fontWeight: 'bold', color: '#2C3E50', marginBottom: 10, textAlign: 'right' },
   noteInput: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -400,24 +415,9 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
   },
-  submitButton: {
-    backgroundColor: '#27AE60',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  cancelButton: {
-    padding: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#7F8C8D',
-    fontSize: 16,
-  },
+  submitWrapper: { borderRadius: 14, overflow: 'hidden', marginBottom: 12 },
+  submitButton: { padding: 18, alignItems: 'center' },
+  submitButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  cancelButton: { padding: 12, alignItems: 'center' },
+  cancelButtonText: { color: '#7F8C8D', fontSize: 16 },
 });

@@ -7,10 +7,12 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../utils/alert';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -20,15 +22,14 @@ export default function LoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('שגיאה', 'נא למלא את כל השדות');
+      showAlert('שגיאה', 'נא למלא את כל השדות');
       return;
     }
-
     setLoading(true);
     try {
       await signIn(email, password);
     } catch (error: any) {
-      Alert.alert('שגיאת התחברות', error.message);
+      showAlert('שגיאת התחברות', error.message);
     } finally {
       setLoading(false);
     }
@@ -38,181 +39,208 @@ export default function LoginScreen({ navigation }: any) {
     try {
       await signInWithGoogle();
     } catch (error: any) {
-      Alert.alert('שגיאה', error.message);
+      showAlert('שגיאה', error.message);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.content}>
-        <Text style={styles.title}>לצאת מעונש</Text>
-        <Text style={styles.subtitle}>התחברות</Text>
-
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="אימייל"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            textAlign="right"
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="סיסמה"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            textAlign="right"
-          />
-
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.loginButtonText}>התחבר</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>או</Text>
-            <View style={styles.dividerLine} />
+    <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.gradient}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <View style={styles.hero}>
+            <Text style={styles.logo}>🚪</Text>
+            <Text style={styles.appName}>לצאת מעונש</Text>
+            <Text style={styles.tagline}>התחבר להמשיך</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleSignIn}
-          >
-            <View style={styles.googleButtonContent}>
+          <View style={styles.card}>
+            <TextInput
+              style={styles.input}
+              placeholder="אימייל"
+              placeholderTextColor="#9BA5B4"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              textAlign="right"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="סיסמה"
+              placeholderTextColor="#9BA5B4"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              textAlign="right"
+            />
+
+            <TouchableOpacity
+              style={styles.loginButtonWrapper}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['#4776E6', '#8E54E9']}
+                style={styles.loginButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>התחבר</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>או</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn} activeOpacity={0.85}>
               <View style={styles.googleLogo}>
                 <Text style={styles.googleLogoText}>G</Text>
               </View>
               <Text style={styles.googleButtonText}>התחבר עם Google</Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.signupLink}
-            onPress={() => navigation.navigate('SignUp')}
-          >
-            <Text style={styles.signupLinkText}>
-              אין לך חשבון? <Text style={styles.signupLinkBold}>הירשם כאן</Text>
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.childQuickSetup}>
-            <Text style={styles.childQuickSetupLabel}>👶 ילד עם קוד מההורה?</Text>
-            <TouchableOpacity
-              style={styles.childQuickSetupButton}
-              onPress={() => navigation.navigate('ChildOnboarding')}
-            >
-              <Text style={styles.childQuickSetupButtonText}>התחברות מהירה לילד ⚡</Text>
+            <TouchableOpacity style={styles.signupLink} onPress={() => navigation.navigate('SignUp')}>
+              <Text style={styles.signupLinkText}>
+                אין לך חשבון? <Text style={styles.signupLinkBold}>הירשם כאן</Text>
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+
+          <View style={styles.childBox}>
+            <Text style={styles.childBoxIcon}>⚡</Text>
+            <Text style={styles.childBoxTitle}>ילד? כניסה מהירה!</Text>
+            <Text style={styles.childBoxDesc}>יש לך קוד מההורה שלך?</Text>
+            <TouchableOpacity
+              style={styles.childButton}
+              onPress={() => navigation.navigate('ChildOnboarding')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['#f7971e', '#ffd200']}
+                style={styles.childButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.childButtonText}>כניסת ילד עם קוד ⚡</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
   },
-  content: {
-    flex: 1,
+  scroll: {
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
-  title: {
-    fontSize: 36,
+  hero: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    fontSize: 60,
+    marginBottom: 12,
+  },
+  appName: {
+    fontSize: 34,
     fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'center',
-    marginBottom: 10,
+    color: '#FFFFFF',
+    marginBottom: 6,
   },
-  subtitle: {
-    fontSize: 24,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginBottom: 40,
+  tagline: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.6)',
   },
-  form: {
-    width: '100%',
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 24,
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 14,
     fontSize: 16,
+    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  loginButtonWrapper: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 6,
   },
   loginButton: {
-    backgroundColor: '#3498DB',
-    borderRadius: 12,
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
-    marginTop: 8,
   },
   loginButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#7F8C8D',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 14,
   },
   googleButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  googleButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    gap: 12,
   },
   googleLogo: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
+    width: 26,
+    height: 26,
+    borderRadius: 5,
     backgroundColor: '#4285F4',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
   },
   googleLogoText: {
     color: '#FFFFFF',
@@ -220,43 +248,56 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   googleButtonText: {
-    color: '#5F6368',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
   signupLink: {
-    marginTop: 24,
+    marginTop: 20,
     alignItems: 'center',
   },
   signupLinkText: {
-    fontSize: 16,
-    color: '#7F8C8D',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.55)',
   },
   signupLinkBold: {
     fontWeight: 'bold',
-    color: '#3498DB',
+    color: '#8E54E9',
   },
-  childQuickSetup: {
-    marginTop: 40,
-    padding: 20,
-    backgroundColor: '#FFE5E5',
-    borderRadius: 15,
+  childBox: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(247,151,30,0.3)',
+  },
+  childBoxIcon: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  childBoxTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffd200',
+    marginBottom: 4,
+  },
+  childBoxDesc: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    marginBottom: 16,
+  },
+  childButton: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  childButtonGradient: {
+    padding: 16,
     alignItems: 'center',
   },
-  childQuickSetupLabel: {
-    fontSize: 16,
-    color: '#E74C3C',
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  childQuickSetupButton: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 12,
-    padding: 14,
-    paddingHorizontal: 24,
-  },
-  childQuickSetupButtonText: {
-    color: '#FFFFFF',
+  childButtonText: {
+    color: '#1a1a2e',
     fontSize: 16,
     fontWeight: 'bold',
   },

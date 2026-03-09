@@ -5,51 +5,19 @@ import EnterLinkingCodeScreen from '../screens/Child/EnterLinkingCodeScreen';
 import TasksListScreen from '../screens/Child/TasksListScreen';
 import QuizScreen from '../screens/Child/QuizScreen';
 import FreedomScreen from '../screens/Child/FreedomScreen';
+import BadgesScreen from '../screens/Child/BadgesScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function ChildNavigator() {
   return (
     <Stack.Navigator>
-      <Stack.Screen
-        name="ChildHome"
-        component={ChildHomeScreen}
-        options={{
-          title: 'לצאת מעונש - ילד',
-          headerTitleAlign: 'center'
-        }}
-      />
-      <Stack.Screen
-        name="EnterLinkingCode"
-        component={EnterLinkingCodeScreen}
-        options={{
-          title: 'חיבור להורה',
-          headerTitleAlign: 'center'
-        }}
-      />
-      <Stack.Screen
-        name="TasksList"
-        component={TasksListScreen}
-        options={{
-          title: 'המשימות שלי',
-          headerTitleAlign: 'center'
-        }}
-      />
-      <Stack.Screen
-        name="Quiz"
-        component={QuizScreen}
-        options={{
-          title: 'חידון',
-          headerTitleAlign: 'center'
-        }}
-      />
-      <Stack.Screen
-        name="Freedom"
-        component={FreedomScreen}
-        options={{
-          headerShown: false
-        }}
-      />
+      <Stack.Screen name="ChildHome" component={ChildHomeScreen} options={{ title: 'לצאת מעונש - ילד', headerTitleAlign: 'center' }} />
+      <Stack.Screen name="EnterLinkingCode" component={EnterLinkingCodeScreen} options={{ title: 'חיבור להורה', headerTitleAlign: 'center' }} />
+      <Stack.Screen name="TasksList" component={TasksListScreen} options={{ title: 'המשימות שלי', headerTitleAlign: 'center' }} />
+      <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'חידון', headerTitleAlign: 'center' }} />
+      <Stack.Screen name="Freedom" component={FreedomScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Badges" component={BadgesScreen} options={{ title: 'הישגים ותגים ⭐', headerTitleAlign: 'center' }} />
     </Stack.Navigator>
   );
 }

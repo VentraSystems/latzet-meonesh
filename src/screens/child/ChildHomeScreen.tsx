@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function ChildHomeScreen({ navigation }: any) {
-  const { user, linkedUserId } = useAuth();
+  const { user, linkedUserId, logout } = useAuth();
   const [childName, setChildName] = useState('');
   const [activePunishment, setActivePunishment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hasShownFreedom, setHasShownFreedom] = useState(false);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [badgeCount, setBadgeCount] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -17,14 +20,15 @@ export default function ChildHomeScreen({ navigation }: any) {
       return;
     }
 
-    // Get child name
     getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
       if (docSnap.exists()) {
-        setChildName(docSnap.data().name);
+        const data = docSnap.data();
+        setChildName(data.name);
+        setTotalPoints(data.totalPoints || 0);
+        setBadgeCount((data.badges || []).length);
       }
     });
 
-    // Listen to active punishment
     const q = query(
       collection(db, 'punishments'),
       where('childId', '==', user.uid),
@@ -44,15 +48,11 @@ export default function ChildHomeScreen({ navigation }: any) {
     return () => unsubscribe();
   }, [user]);
 
-  // Check if punishment was just completed and show Freedom screen
   useEffect(() => {
     if (!activePunishment || hasShownFreedom) return;
-
     const tasks = activePunishment.tasks || [];
     const allApproved = tasks.length > 0 && tasks.every((t: any) => t.status === 'approved');
-
     if (allApproved) {
-      // Small delay for better UX
       setTimeout(() => {
         setHasShownFreedom(true);
         navigation.navigate('Freedom', { punishmentId: activePunishment.id });
@@ -62,9 +62,9 @@ export default function ChildHomeScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E74C3C" />
-      </View>
+      <LinearGradient colors={['#c0392b', '#e74c3c', '#f39c12']} style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </LinearGradient>
     );
   }
 
@@ -73,6 +73,7 @@ export default function ChildHomeScreen({ navigation }: any) {
   const completedTasks = tasks.filter((t: any) => t.status === 'approved').length;
   const totalTasks = tasks.length;
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  const remaining = totalTasks - completedTasks;
 
   const getStatusEmoji = (status: string) => {
     switch (status) {
@@ -92,91 +93,165 @@ export default function ChildHomeScreen({ navigation }: any) {
     }
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      {isInPunishment ? (
-        <>
-          <View style={styles.header}>
-            <Text style={styles.headerEmoji}>😔</Text>
-            <Text style={styles.headerTitle}>שלום {childName}!</Text>
-            <Text style={styles.headerSubtitle}>אתה בעונש</Text>
-            <Text style={styles.punishmentName}>{activePunishment.name}</Text>
-          </View>
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return '#27AE60';
+      case 'submitted': return '#F39C12';
+      case 'rejected': return '#E74C3C';
+      default: return '#7F8C8D';
+    }
+  };
 
-          <View style={styles.motivationCard}>
-            <Text style={styles.motivationText}>
-              💪 כמעט סיימת! רק עוד {totalTasks - completedTasks} משימות
+  if (!isInPunishment) {
+    return (
+      <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.fullScreen}>
+        <ScrollView contentContainerStyle={styles.freedomContainer}>
+          <Text style={styles.freedomEmoji}>🎉</Text>
+          <Text style={styles.freedomTitle}>שלום {childName}!</Text>
+          <Text style={styles.freedomSubtitle}>אתה חופשי לגמרי!</Text>
+          <Text style={styles.freedomSubtitle}>אין לך עונשים כרגע 🌟</Text>
+
+          <View style={styles.freedomCard}>
+            <Text style={styles.freedomCardEmoji}>💡</Text>
+            <Text style={styles.freedomCardText}>
+              התנהגות טובה עוזרת לך להישאר חופשי!
             </Text>
-          </View>
-
-          <View style={styles.progressCard}>
-            <Text style={styles.progressTitle}>התקדמות שלך</Text>
-            <Text style={styles.progressNumbers}>
-              {completedTasks} / {totalTasks} משימות הושלמו
-            </Text>
-            <View style={styles.progressBarContainer}>
-              <View style={[styles.progressBar, { width: `${progress}%` }]} />
-            </View>
-            <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
-          </View>
-
-          <View style={styles.tasksSection}>
-            <Text style={styles.sectionTitle}>המשימות שלך</Text>
-            {tasks.map((task: any) => (
-              <TouchableOpacity
-                key={task.id}
-                style={styles.taskItem}
-                onPress={() => navigation.navigate('TasksList', { punishmentId: activePunishment.id })}
-              >
-                <View style={styles.taskContent}>
-                  <Text style={styles.taskEmoji}>{getStatusEmoji(task.status)}</Text>
-                  <View style={styles.taskInfo}>
-                    <Text style={styles.taskTitle}>{task.title}</Text>
-                    <Text style={styles.taskStatus}>{getStatusText(task.status)}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
           </View>
 
           <TouchableOpacity
-            style={styles.viewTasksButton}
-            onPress={() => navigation.navigate('TasksList', { punishmentId: activePunishment.id })}
+            style={styles.badgesButton}
+            onPress={() => navigation.navigate('Badges')}
+            activeOpacity={0.85}
           >
-            <Text style={styles.viewTasksButtonText}>📝 צפה בכל המשימות</Text>
+            <LinearGradient colors={['#f7971e', '#ffd200']} style={styles.badgesButtonGradient}>
+              <Text style={styles.badgesButtonText}>🏆 הישגים ותגים שלי</Text>
+            </LinearGradient>
           </TouchableOpacity>
 
-          <View style={styles.encouragement}>
-            <Text style={styles.encouragementText}>
-              💡 כל משימה שתשלים מקרבת אותך לחופש!
-            </Text>
-          </View>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutBtnText}>התנתק</Text>
+          </TouchableOpacity>
 
-          {/* Ventra Branding Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Made with ❤️ by</Text>
-            <Text style={styles.footerBrand}>Ventra Software Systems LTD</Text>
-          </View>
-        </>
-      ) : (
-        <View style={styles.freedomScreen}>
-          <Text style={styles.freedomEmoji}>🎉</Text>
-          <Text style={styles.freedomTitle}>שלום {childName}!</Text>
-          <Text style={styles.freedomSubtitle}>אתה חופשי! אין לך עונשים כרגע</Text>
-          <View style={styles.tipsCard}>
-            <Text style={styles.tipsEmoji}>💡</Text>
-            <Text style={styles.tipsText}>
-              זכור: התנהגות טובה עוזרת לך להישאר חופשי!
-            </Text>
-          </View>
+          <Text style={styles.footerText}>Ventra Software Systems LTD</Text>
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
 
-          {/* Ventra Branding Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Made with ❤️ by</Text>
-            <Text style={styles.footerBrand}>Ventra Software Systems LTD</Text>
-          </View>
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <LinearGradient
+        colors={['#c0392b', '#e74c3c', '#e67e22']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Points & Badges Row */}
+        <View style={styles.statsTopRow}>
+          <TouchableOpacity style={styles.pointsPill} onPress={() => navigation.navigate('Badges')} activeOpacity={0.8}>
+            <Text style={styles.pointsPillText}>⭐ {totalPoints} נק'</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.badgesPill} onPress={() => navigation.navigate('Badges')} activeOpacity={0.8}>
+            <Text style={styles.badgesPillText}>🏆 {badgeCount} תגים</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutPill} onPress={logout} activeOpacity={0.8}>
+            <Text style={styles.logoutPillText}>התנתק</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.headerEmoji}>😔</Text>
+        <Text style={styles.headerTitle}>שלום {childName}!</Text>
+        <Text style={styles.headerSubtitle}>אתה בעונש</Text>
+        <View style={styles.punishmentNameBadge}>
+          <Text style={styles.punishmentName}>{activePunishment.name}</Text>
+        </View>
+      </LinearGradient>
+
+      {/* Motivation Banner */}
+      {remaining > 0 && (
+        <View style={styles.motivationBanner}>
+          <Text style={styles.motivationText}>
+            💪 עוד {remaining} {remaining === 1 ? 'משימה' : 'משימות'} ואתה חופשי!
+          </Text>
         </View>
       )}
+
+      {/* Progress Card */}
+      <View style={styles.progressCard}>
+        <Text style={styles.progressTitle}>ההתקדמות שלך</Text>
+        <View style={styles.progressNumbers}>
+          <Text style={styles.progressBig}>{completedTasks}</Text>
+          <Text style={styles.progressSlash}> / </Text>
+          <Text style={styles.progressTotal}>{totalTasks}</Text>
+        </View>
+        <Text style={styles.progressLabel}>משימות הושלמו</Text>
+
+        <View style={styles.progressBarBg}>
+          <LinearGradient
+            colors={['#27AE60', '#2ECC71']}
+            style={[styles.progressBarFill, { width: `${progress}%` as any }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+        </View>
+
+        <View style={styles.progressPctRow}>
+          <Text style={styles.progressPctText}>{Math.round(progress)}%</Text>
+          {progress === 100 && <Text style={styles.allDoneText}>הכל הושלם! 🎉</Text>}
+        </View>
+      </View>
+
+      {/* Tasks */}
+      <View style={styles.tasksSection}>
+        <Text style={styles.sectionTitle}>המשימות שלך</Text>
+        {tasks.map((task: any) => (
+          <TouchableOpacity
+            key={task.id}
+            style={styles.taskCard}
+            onPress={() => navigation.navigate('TasksList', { punishmentId: activePunishment.id })}
+            activeOpacity={0.8}
+          >
+            <View style={styles.taskLeft}>
+              <Text style={styles.taskEmoji}>{getStatusEmoji(task.status)}</Text>
+            </View>
+            <View style={styles.taskInfo}>
+              <Text style={styles.taskTitle}>{task.title}</Text>
+              <Text style={[styles.taskStatus, { color: getStatusColor(task.status) }]}>
+                {getStatusText(task.status)}
+              </Text>
+            </View>
+            <Text style={styles.taskArrow}>←</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* CTA */}
+      <View style={styles.ctaSection}>
+        <TouchableOpacity
+          style={styles.ctaWrapper}
+          onPress={() => navigation.navigate('TasksList', { punishmentId: activePunishment.id })}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#c0392b', '#e74c3c']}
+            style={styles.ctaButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.ctaButtonText}>📝 השלם משימות עכשיו</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.encouragement}>
+        <Text style={styles.encouragementText}>
+          💡 כל משימה שתשלים מקרבת אותך לחופש!
+        </Text>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Ventra Software Systems LTD</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -184,231 +259,319 @@ export default function ChildHomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FFF5F5',
+  },
+  fullScreen: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
+  },
+  freedomContainer: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    paddingTop: 80,
+    paddingBottom: 60,
+  },
+  freedomEmoji: {
+    fontSize: 90,
+    marginBottom: 20,
+  },
+  freedomTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  freedomSubtitle: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.75)',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  freedomCard: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    width: '100%',
+  },
+  freedomCardEmoji: {
+    fontSize: 44,
+    marginBottom: 12,
+  },
+  freedomCardText: {
+    fontSize: 17,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  logoutBtn: {
+    marginTop: 32,
+    padding: 12,
+  },
+  logoutBtnText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   header: {
-    backgroundColor: '#E74C3C',
-    padding: 30,
-    paddingTop: 20,
+    padding: 28,
+    paddingTop: 50,
+    paddingBottom: 32,
     alignItems: 'center',
   },
+  statsTopRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+    justifyContent: 'center',
+  },
+  pointsPill: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  pointsPillText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+  badgesPill: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  badgesPillText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+  logoutPill: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  logoutPillText: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+  badgesButton: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 20,
+    shadowColor: '#f7971e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  badgesButtonGradient: { padding: 18, alignItems: 'center' },
+  badgesButtonText: { color: '#1a1a2e', fontSize: 18, fontWeight: 'bold' },
   headerEmoji: {
-    fontSize: 60,
+    fontSize: 64,
     marginBottom: 10,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 20,
-    color: '#FFFFFF',
-    marginBottom: 10,
-    opacity: 0.9,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 14,
+  },
+  punishmentNameBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 30,
   },
   punishmentName: {
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
-    textAlign: 'center',
   },
-  motivationCard: {
-    backgroundColor: '#FFF3CD',
-    margin: 15,
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
+  motivationBanner: {
+    backgroundColor: '#FFF3E0',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F39C12',
   },
   motivationText: {
-    fontSize: 18,
-    color: '#856404',
+    fontSize: 17,
+    color: '#E67E22',
     fontWeight: 'bold',
     textAlign: 'center',
   },
   progressCard: {
     backgroundColor: '#FFFFFF',
-    margin: 15,
-    padding: 20,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    margin: 16,
+    borderRadius: 20,
+    padding: 22,
+    alignItems: 'center',
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
   },
   progressTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#2C3E50',
-    textAlign: 'right',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   progressNumbers: {
-    fontSize: 24,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 4,
+  },
+  progressBig: {
+    fontSize: 56,
     fontWeight: 'bold',
-    color: '#3498DB',
-    textAlign: 'center',
-    marginBottom: 15,
+    color: '#E74C3C',
   },
-  progressBarContainer: {
-    height: 15,
+  progressSlash: {
+    fontSize: 32,
+    color: '#BDC3C7',
+    fontWeight: 'bold',
+  },
+  progressTotal: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#95A5A6',
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: '#95A5A6',
+    marginBottom: 16,
+  },
+  progressBarBg: {
+    width: '100%',
+    height: 14,
     backgroundColor: '#ECF0F1',
-    borderRadius: 10,
+    borderRadius: 7,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  progressBar: {
+  progressBarFill: {
     height: '100%',
-    backgroundColor: '#27AE60',
-    borderRadius: 10,
+    borderRadius: 7,
   },
-  progressPercent: {
-    fontSize: 18,
+  progressPctRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  progressPctText: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#27AE60',
-    textAlign: 'center',
+  },
+  allDoneText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#27AE60',
   },
   tasksSection: {
-    padding: 15,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#2C3E50',
     textAlign: 'right',
-    marginBottom: 15,
+    marginBottom: 12,
   },
-  taskItem: {
+  taskCard: {
     backgroundColor: '#FFFFFF',
-    padding: 15,
-    borderRadius: 10,
+    borderRadius: 14,
+    padding: 16,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  taskContent: {
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  taskEmoji: {
-    fontSize: 30,
-    marginLeft: 15,
-  },
-  taskInfo: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'right',
-    marginBottom: 5,
-  },
-  taskStatus: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    textAlign: 'right',
-  },
-  encouragement: {
-    margin: 15,
-    padding: 15,
-    backgroundColor: '#D4EDDA',
-    borderRadius: 10,
-    marginBottom: 30,
-  },
-  encouragementText: {
-    fontSize: 16,
-    color: '#155724',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  viewTasksButton: {
-    backgroundColor: '#3498DB',
-    margin: 15,
-    marginTop: 5,
-    padding: 18,
-    borderRadius: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4,
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  viewTasksButtonText: {
+  taskLeft: {
+    marginLeft: 14,
+  },
+  taskEmoji: {
+    fontSize: 28,
+  },
+  taskInfo: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    textAlign: 'right',
+    marginBottom: 3,
+  },
+  taskStatus: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  taskArrow: {
+    color: '#BDC3C7',
+    fontSize: 18,
+    marginLeft: 10,
+  },
+  ctaSection: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  ctaWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  ctaButton: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  ctaButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  freedomScreen: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
-    minHeight: 600,
+  encouragement: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#E8F8F0',
+    borderRadius: 14,
   },
-  freedomEmoji: {
-    fontSize: 100,
-    marginBottom: 20,
-  },
-  freedomTitle: {
-    fontSize: 36,
-    fontWeight: 'bold',
+  encouragementText: {
+    fontSize: 15,
     color: '#27AE60',
-    marginBottom: 10,
-  },
-  freedomSubtitle: {
-    fontSize: 20,
-    color: '#7F8C8D',
     textAlign: 'center',
-    marginBottom: 30,
-  },
-  tipsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 25,
-    marginTop: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  tipsEmoji: {
-    fontSize: 50,
-    marginBottom: 15,
-  },
-  tipsText: {
-    fontSize: 18,
-    color: '#2C3E50',
-    textAlign: 'center',
-    lineHeight: 26,
+    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',
     padding: 20,
-    marginTop: 20,
     marginBottom: 20,
   },
   footerText: {
     fontSize: 12,
-    color: '#95A5A6',
-    marginBottom: 4,
-  },
-  footerBrand: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#E74C3C',
+    color: '#CDBBBB',
   },
 });

@@ -5,13 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { QuizQuestion } from '../../data/taskPresets';
 import { notifyQuizPassed } from '../../utils/notifications';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../utils/alert';
 
 interface Props {
   route: any;
@@ -55,7 +55,7 @@ export default function QuizScreen({ route, navigation }: Props) {
 
     if (passed) {
       // Update task as completed
-      Alert.alert(
+      showAlert(
         'כל הכבוד! 🎉',
         `עברת את החידון!\nצברת ${correct} מתוך ${questions.length} נכון (${Math.round(percentage)}%)`,
         [
@@ -110,7 +110,7 @@ export default function QuizScreen({ route, navigation }: Props) {
         ]
       );
     } else {
-      Alert.alert(
+      showAlert(
         'כמעט! 💪',
         `קיבלת ${correct} מתוך ${questions.length} נכון (${Math.round(percentage)}%)\nצריך לפחות 60% כדי לעבור.\nנסה שוב!`,
         [
