@@ -23,6 +23,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending' | 'done'>('pending');
   const { t, isRTL } = useLanguage();
 
   useEffect(() => {
@@ -132,32 +133,49 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   }
 
   const pendingTasks = punishment?.tasks?.filter((t: any) => t.status === 'submitted') || [];
-
-  if (pendingTasks.length === 0) {
-    return (
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyEmoji}>✨</Text>
-        <Text style={styles.emptyTitle}>{t.taskApproval.empty}</Text>
-        <Text style={styles.emptyText}>{t.taskApproval.emptyDesc}</Text>
-        <TouchableOpacity style={styles.backButtonWrapper} onPress={() => navigation.goBack()}>
-          <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.backButton}>
-            <Text style={styles.backButtonText}>{t.taskApproval.back}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const doneTasks = punishment?.tasks?.filter((t: any) => t.status === 'approved' || t.status === 'rejected') || [];
+  const shownTasks = activeTab === 'pending' ? pendingTasks : doneTasks;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.titleSection}>
         <Text style={styles.title}>{t.taskApproval.title}</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{pendingTasks.length}</Text>
-        </View>
+        {pendingTasks.length > 0 && (
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{pendingTasks.length}</Text>
+          </View>
+        )}
       </View>
 
-      {pendingTasks.map((task: any) => {
+      {/* Tabs */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
+          onPress={() => setActiveTab('pending')}
+        >
+          <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
+            {pendingTasks.length > 0 ? `⏳ ${t.taskApproval.tabPending || 'Needs Approval'} (${pendingTasks.length})` : `⏳ ${t.taskApproval.tabPending || 'Needs Approval'}`}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'done' && styles.tabActive]}
+          onPress={() => setActiveTab('done')}
+        >
+          <Text style={[styles.tabText, activeTab === 'done' && styles.tabTextActive]}>
+            {`✅ ${t.taskApproval.tabDone || 'Completed'} (${doneTasks.length})`}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {shownTasks.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>{activeTab === 'pending' ? '✨' : '📋'}</Text>
+          <Text style={styles.emptyTitle}>{activeTab === 'pending' ? t.taskApproval.empty : (t.taskApproval.noDone || 'No completed tasks yet')}</Text>
+          <Text style={styles.emptyText}>{activeTab === 'pending' ? t.taskApproval.emptyDesc : ''}</Text>
+        </View>
+      )}
+
+      {shownTasks.map((task: any) => {
         const points = POINTS_PER_TASK[task.type as keyof typeof POINTS_PER_TASK] ?? 10;
         return (
           <View key={task.id} style={styles.taskCard}>
@@ -206,28 +224,39 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
               </View>
             )}
 
-            {/* Action Buttons */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.approveWrapper}
-                onPress={() => handleApprove(task.id)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.actionBtn}>
-                  <Text style={styles.actionBtnText}>{t.taskApproval.approve}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+            {/* Action Buttons — only for submitted tasks */}
+            {task.status === 'submitted' && (
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.approveWrapper}
+                  onPress={() => handleApprove(task.id)}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.actionBtn}>
+                    <Text style={styles.actionBtnText}>{t.taskApproval.approve}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.rejectWrapper}
-                onPress={() => handleReject(task.id)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#E74C3C', '#C0392B']} style={styles.actionBtn}>
-                  <Text style={styles.actionBtnText}>{t.taskApproval.reject}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.rejectWrapper}
+                  onPress={() => handleReject(task.id)}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient colors={['#E74C3C', '#C0392B']} style={styles.actionBtn}>
+                    <Text style={styles.actionBtnText}>{t.taskApproval.reject}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Status badge for done tasks */}
+            {(task.status === 'approved' || task.status === 'rejected') && (
+              <View style={[styles.doneBadge, { backgroundColor: task.status === 'approved' ? '#E8F8F0' : '#FFF0F0' }]}>
+                <Text style={[styles.doneBadgeText, { color: task.status === 'approved' ? '#27AE60' : '#E74C3C' }]}>
+                  {task.status === 'approved' ? `✅ ${t.taskApproval.approveBtn || 'Approved'}` : `❌ ${t.taskApproval.rejectBtn || 'Rejected'}`}
+                </Text>
+              </View>
+            )}
           </View>
         );
       })}
@@ -316,4 +345,11 @@ const styles = StyleSheet.create({
   rejectWrapper: { flex: 1, borderRadius: 14, overflow: 'hidden' },
   actionBtn: { padding: 16, alignItems: 'center' },
   actionBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+  tabRow: { flexDirection: 'row', backgroundColor: '#E8EBFF', borderRadius: 12, padding: 4, marginBottom: 16, gap: 4 },
+  tab: { flex: 1, padding: 10, borderRadius: 10, alignItems: 'center' },
+  tabActive: { backgroundColor: '#FFFFFF', shadowColor: '#4776E6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+  tabText: { fontSize: 13, color: '#7F8C8D', fontWeight: '600' },
+  tabTextActive: { color: '#4776E6' },
+  doneBadge: { borderRadius: 10, padding: 10, alignItems: 'center', marginTop: 4 },
+  doneBadgeText: { fontSize: 15, fontWeight: 'bold' },
 });

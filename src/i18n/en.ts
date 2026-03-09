@@ -97,6 +97,7 @@ const en = {
     freeMsg: 'Your child is free right now!',
     newPunishment: '➕ Set New Challenge',
     approveTasks: '✅ Approve Tasks ({n})',
+    reviewTasks: '📋 Review All Tasks',
     reports: '📊 Reports & Analytics',
     settings: '⚙️ Settings',
     noChild: 'Not connected to a child',

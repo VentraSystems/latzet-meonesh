@@ -99,6 +99,7 @@ const he: Translations = {
     freeMsg: 'הילד שלך חופשי כרגע!',
     newPunishment: '➕ הגדר עונש חדש',
     approveTasks: '✅ אשר משימות ({n})',
+    reviewTasks: '📋 צפה בכל המשימות',
     reports: '📊 דוחות וניתוח',
     settings: '⚙️ הגדרות',
     noChild: 'לא מחובר לילד',

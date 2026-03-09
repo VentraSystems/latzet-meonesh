@@ -169,14 +169,23 @@ export default function ParentHomeScreen({ navigation }: any) {
           </LinearGradient>
         </TouchableOpacity>
 
-        {isInPunishment && pendingTasks > 0 && (
+        {isInPunishment && (
           <TouchableOpacity
             style={styles.approveButtonWrapper}
             onPress={() => navigation.navigate('TaskApproval', { punishmentId: activePunishment.id })}
             activeOpacity={0.85}
           >
-            <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.primaryButtonText}>{t.parentHome.approveTasks.replace('{n}', String(pendingTasks))}</Text>
+            <LinearGradient
+              colors={pendingTasks > 0 ? ['#27AE60', '#2ECC71'] : ['#4776E6', '#8E54E9']}
+              style={styles.primaryButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.primaryButtonText}>
+                {pendingTasks > 0
+                  ? t.parentHome.approveTasks.replace('{n}', String(pendingTasks))
+                  : t.parentHome.reviewTasks}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
