@@ -103,6 +103,7 @@ const en = {
     noChildDesc: 'To get started, connect your child to the account',
     connectChild: 'Connect Child Now',
     footer: 'Made with ❤️ by Ventra Software Systems LTD',
+    reconnectChild: 'Reconnect / Add Child',
   },
 
   childHome: {

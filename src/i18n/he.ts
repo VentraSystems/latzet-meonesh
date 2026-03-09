@@ -105,6 +105,7 @@ const he: Translations = {
     noChildDesc: 'כדי להתחיל, חבר את הילד שלך לחשבון',
     connectChild: 'חבר ילד עכשיו',
     footer: 'Made with ❤️ by Ventra Software Systems LTD',
+    reconnectChild: 'חיבור / הוספת ילד',
   },
 
   childHome: {
