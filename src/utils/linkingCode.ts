@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, arrayUnion, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export const generateLinkingCode = (): string => {
@@ -40,12 +40,12 @@ export const verifyAndUseLinkingCode = async (
     return { success: false, error: 'הקוד פג תוקף' };
   }
 
-  // Delete the code and create pending-link signal (includes arrayUnion flag for multi-child)
+  // Delete the code and directly update the parent's linkedUserIds
   await deleteDoc(doc(db, 'linkingCodes', code));
-  await setDoc(doc(db, 'linkingCodes', `pending_${data.parentId}`), {
-    childId,
-    parentId: data.parentId,
-    createdAt: new Date(),
+  await updateDoc(doc(db, 'users', data.parentId), {
+    linkedUserIds: arrayUnion(childId),
+    linkedUserId: childId,       // backward compat
+    selectedChildId: childId,    // auto-select the newly linked child
   });
 
   return { success: true, parentId: data.parentId };

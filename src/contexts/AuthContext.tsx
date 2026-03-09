@@ -8,7 +8,7 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { UserRole } from '../types';
 import { useNotifications } from '../hooks/useNotifications';
@@ -67,13 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let unsubscribeDoc: (() => void) | null = null;
-    let unsubscribePendingLink: (() => void) | null = null;
-
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
 
       if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }
-      if (unsubscribePendingLink) { unsubscribePendingLink(); unsubscribePendingLink = null; }
 
       if (firebaseUser) {
         unsubscribeDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (userDoc) => {
@@ -86,29 +83,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLinkedUserIds(ids);
             // Selected child = explicit selection or first in list
             setLinkedUserId(userData.selectedChildId || ids[0] || null);
-
-            // If parent with no children yet, watch for pending link signal
-            if (userData.role === 'parent' && ids.length === 0) {
-              if (!unsubscribePendingLink) {
-                unsubscribePendingLink = onSnapshot(
-                  doc(db, 'linkingCodes', `pending_${firebaseUser.uid}`),
-                  async (pendingDoc) => {
-                    if (pendingDoc.exists()) {
-                      const { childId } = pendingDoc.data();
-                      await updateDoc(doc(db, 'users', firebaseUser.uid), {
-                        linkedUserIds: arrayUnion(childId),
-                        linkedUserId: childId, // keep backward compat
-                        selectedChildId: childId,
-                      });
-                      await deleteDoc(doc(db, 'linkingCodes', `pending_${firebaseUser.uid}`));
-                    }
-                  }
-                );
-              }
-            } else if (ids.length > 0 && unsubscribePendingLink) {
-              // But still watch for additional children linking
-              // (new pending docs use pending_{parentId}_{timestamp} but for simplicity keep same key)
-            }
           }
           setLoading(false);
         });
@@ -123,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       unsubscribeAuth();
       if (unsubscribeDoc) unsubscribeDoc();
-      if (unsubscribePendingLink) unsubscribePendingLink();
     };
   }, []);
 
