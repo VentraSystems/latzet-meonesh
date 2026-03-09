@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { notifyTaskSubmitted } from '../../utils/notifications';
@@ -28,6 +28,7 @@ export default function TasksListScreen({ navigation }: any) {
   const [taskNote, setTaskNote] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { t, isRTL } = useLanguage();
 
   useEffect(() => {
@@ -48,32 +49,25 @@ export default function TasksListScreen({ navigation }: any) {
     return () => unsubscribe();
   }, []);
 
+  const PICK_OPTIONS: ImagePicker.ImagePickerOptions = {
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [4, 3] as [number, number],
+    quality: 0.3,
+    exif: false,
+  };
+
   const pickPhoto = async () => {
-    if (Platform.OS === 'web') {
-      // Web: use file input via image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.7,
-      });
-      if (!result.canceled && result.assets[0]) {
-        setPhotoUri(result.assets[0].uri);
-      }
-    } else {
+    if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         showAlert(t.tasksList.permissionRequired, t.tasksList.errorGallery);
         return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.7,
-      });
-      if (!result.canceled && result.assets[0]) {
-        setPhotoUri(result.assets[0].uri);
-      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync(PICK_OPTIONS);
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
     }
   };
 
@@ -84,27 +78,35 @@ export default function TasksListScreen({ navigation }: any) {
       showAlert(t.tasksList.permissionRequired, t.tasksList.errorCamera);
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
+    const result = await ImagePicker.launchCameraAsync({ ...PICK_OPTIONS, aspect: [4, 3] });
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
     }
   };
 
-  const uploadPhoto = async (uri: string, punishmentId: string, taskId: string): Promise<string | null> => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const storageRef = ref(storage, `task-photos/${punishmentId}/${taskId}/${Date.now()}.jpg`);
-      await uploadBytes(storageRef, blob);
-      return await getDownloadURL(storageRef);
-    } catch (e) {
-      console.error('Photo upload failed:', e);
-      return null;
-    }
+  const uploadPhoto = (uri: string, punishmentId: string, taskId: string): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const storageRef = ref(storage, `task-photos/${punishmentId}/${taskId}/${Date.now()}.jpg`);
+        const uploadTask = uploadBytesResumable(storageRef, blob, { contentType: 'image/jpeg' });
+
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setUploadProgress(pct);
+          },
+          (error) => reject(error),
+          async () => {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(url);
+          }
+        );
+      } catch (e) {
+        reject(e);
+      }
+    });
   };
 
   const handleTaskComplete = async (task: any) => {
@@ -124,6 +126,7 @@ export default function TasksListScreen({ navigation }: any) {
   const submitTask = async () => {
     if (!selectedTask) return;
     setUploading(true);
+    setUploadProgress(0);
 
     try {
       let photoUrl: string | null = null;
@@ -162,10 +165,11 @@ export default function TasksListScreen({ navigation }: any) {
           onPress: () => { setSelectedTask(null); setTaskNote(''); setPhotoUri(null); },
         },
       ]);
-    } catch (error) {
-      showAlert(t.common.error, t.tasksList.errorSubmit);
+    } catch (error: any) {
+      showAlert(t.common.error, error?.message || t.tasksList.errorSubmit);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -259,7 +263,12 @@ export default function TasksListScreen({ navigation }: any) {
           >
             <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.submitButton}>
               {uploading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <ActivityIndicator color="#FFFFFF" />
+                  <Text style={styles.submitButtonText}>
+                    {photoUri && uploadProgress > 0 ? `${uploadProgress}%` : '...'}
+                  </Text>
+                </View>
               ) : (
                 <Text style={styles.submitButtonText}>{photoUri ? t.tasksList.submitBtnPhoto : t.tasksList.submitBtn}</Text>
               )}
