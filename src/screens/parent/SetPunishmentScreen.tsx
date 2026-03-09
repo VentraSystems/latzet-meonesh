@@ -76,6 +76,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
   const [expandedTaskDetail, setExpandedTaskDetail] = useState<string | null>(null);
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
   const [taskRefPhotos, setTaskRefPhotos] = useState<Record<string, string[]>>({});
+  const [taskRepeats, setTaskRepeats] = useState<Record<string, number>>({});
 
   // Homework tasks
   const [homeworkTasks, setHomeworkTasks] = useState<HomeworkTask[]>([]);
@@ -296,39 +297,57 @@ export default function SetPunishmentScreen({ navigation }: any) {
         })
       );
 
-      // Build preset tasks
-      const presetTasks = selectedTasks.map((taskId) => {
+      // Build preset tasks (with optional daily repeat expansion)
+      const presetTasks = selectedTasks.flatMap((taskId) => {
         const preset = taskPresets.find((t) => t.id === taskId);
-        if (preset) {
-          const parentNote = taskNotes[taskId] || '';
-          const refPhotoUrls = uploadedRefPhotos[taskId] || [];
-          // Special case: no-phone with chosen duration
-          if (taskId === 'no-phone-hour' && noPhoneConfirmed !== null) {
-            const dur = fmtDuration(noPhoneConfirmed);
-            return {
-              id: taskId,
-              title: language === 'en' ? `📵 No Phone — ${dur}` : `📵 בלי טלפון — ${dur}`,
-              description: language === 'en' ? `No phone use for ${dur}` : `לא להשתמש בטלפון למשך ${dur}`,
-              type: preset.type,
-              status: 'pending',
-              noPhoneHours: noPhoneConfirmed,
-              ...(parentNote ? { parentNote } : {}),
-              ...(refPhotoUrls.length ? { refPhotoUrls } : {}),
-            };
+        const repeatDays = taskRepeats[taskId] || 1;
+        const parentNote = taskNotes[taskId] || '';
+        const refPhotoUrls = uploadedRefPhotos[taskId] || [];
+
+        const buildInstance = (day: number) => {
+          const unlockDate = new Date();
+          unlockDate.setDate(unlockDate.getDate() + day);
+          const dateStr = unlockDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+
+          let title: string;
+          let description: string;
+
+          if (preset) {
+            if (taskId === 'no-phone-hour' && noPhoneConfirmed !== null) {
+              const dur = fmtDuration(noPhoneConfirmed);
+              title = language === 'en' ? `📵 No Phone — ${dur}` : `📵 בלי טלפון — ${dur}`;
+              description = language === 'en' ? `No phone use for ${dur}` : `לא להשתמש בטלפון למשך ${dur}`;
+            } else {
+              title = language === 'en' ? preset.titleEn : preset.title;
+              description = language === 'en' ? preset.descriptionEn : preset.description;
+            }
+          } else {
+            const customTitle = taskId.split('-').slice(2).join('-');
+            title = customTitle;
+            description = language === 'en' ? 'Custom task' : 'משימה מותאמת אישית';
           }
+
+          if (repeatDays > 1) {
+            title = language === 'en' ? `${title} (Day ${day + 1}/${repeatDays})` : `${title} (יום ${day + 1}/${repeatDays})`;
+          }
+
           return {
-            id: taskId,
-            title: language === 'en' ? preset.titleEn : preset.title,
-            description: language === 'en' ? preset.descriptionEn : preset.description,
-            type: preset.type,
+            id: repeatDays > 1 ? `${taskId}-day${day + 1}-${Date.now()}` : taskId,
+            title,
+            description,
+            type: preset?.type || 'task',
             status: 'pending',
+            unlockDate: repeatDays > 1 ? dateStr : null,
+            recurringDay: repeatDays > 1 ? day + 1 : null,
+            recurringTotal: repeatDays > 1 ? repeatDays : null,
+            recurringGroupId: repeatDays > 1 ? `${taskId}-group-${Date.now()}` : null,
+            ...(taskId === 'no-phone-hour' && noPhoneConfirmed !== null ? { noPhoneHours: noPhoneConfirmed } : {}),
             ...(parentNote ? { parentNote } : {}),
             ...(refPhotoUrls.length ? { refPhotoUrls } : {}),
           };
-        }
-        // Custom
-        const customTitle = taskId.split('-').slice(2).join('-');
-        return { id: taskId, title: customTitle, description: language === 'en' ? 'Custom task' : 'משימה מותאמת אישית', type: 'task', status: 'pending' };
+        };
+
+        return Array.from({ length: repeatDays }, (_, day) => buildInstance(day));
       });
 
       // Build AI quiz tasks
@@ -533,6 +552,23 @@ export default function SetPunishmentScreen({ navigation }: any) {
                   <Text style={styles.refPhotoAddText}>{language === 'en' ? 'Photo' : 'תמונה'}</Text>
                 </TouchableOpacity>
               )}
+            </View>
+
+            <Text style={styles.taskDetailPhotoLabel}>
+              🔁 {language === 'en' ? 'Repeat daily for:' : 'חזור יום יום עבור:'}
+            </Text>
+            <View style={styles.pillRow}>
+              {[1, 3, 5, 7, 14, 30].map((days) => (
+                <TouchableOpacity
+                  key={days}
+                  style={[styles.pill, (taskRepeats[task.id] || 1) === days && styles.noPhonePillSelected]}
+                  onPress={() => setTaskRepeats((prev) => ({ ...prev, [task.id]: days }))}
+                >
+                  <Text style={[styles.pillText, (taskRepeats[task.id] || 1) === days && styles.pillTextSelected]}>
+                    {days === 1 ? (language === 'en' ? 'Once' : 'פעם אחת') : language === 'en' ? `${days}d` : `${days} ימים`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             <TouchableOpacity style={styles.taskDetailDone} onPress={() => setExpandedTaskDetail(null)}>

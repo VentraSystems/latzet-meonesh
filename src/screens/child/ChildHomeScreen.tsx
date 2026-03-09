@@ -14,7 +14,7 @@ export default function ChildHomeScreen({ navigation }: any) {
   const [hasShownFreedom, setHasShownFreedom] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [badgeCount, setBadgeCount] = useState(0);
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
 
   useEffect(() => {
     if (!user) {
@@ -62,6 +62,17 @@ export default function ChildHomeScreen({ navigation }: any) {
     }
   }, [activePunishment, hasShownFreedom, navigation]);
 
+  // Helper: is a task available today?
+  const today = new Date().toISOString().split('T')[0];
+  const todayTasks = activePunishment?.tasks?.filter((t: any) =>
+    !t.unlockDate || t.unlockDate <= today
+  ) || [];
+  const todayPendingOrSubmitted = todayTasks.filter((t: any) =>
+    t.status === 'pending' || t.status === 'submitted'
+  );
+  // Child is effectively "free" today if all today's tasks are approved (even if future recurring tasks remain)
+  const effectivelyFree = todayTasks.length > 0 && todayPendingOrSubmitted.length === 0;
+
   if (loading) {
     return (
       <LinearGradient colors={['#c0392b', '#e74c3c', '#f39c12']} style={styles.loadingContainer}>
@@ -76,6 +87,7 @@ export default function ChildHomeScreen({ navigation }: any) {
   const totalTasks = tasks.length;
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
   const remaining = totalTasks - completedTasks;
+  const hasRecurringFutureTasks = tasks.some((t: any) => t.unlockDate && t.unlockDate > today);
 
   const getStatusEmoji = (status: string) => {
     switch (status) {
@@ -123,6 +135,40 @@ export default function ChildHomeScreen({ navigation }: any) {
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutBtnText}>{t.childHome.logoutBtn}</Text>
           </TouchableOpacity>
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
+
+  // Show "great job today" screen when recurring tasks exist but today's are all done
+  if (isInPunishment && effectivelyFree && hasRecurringFutureTasks) {
+    return (
+      <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.fullScreen}>
+        <ScrollView contentContainerStyle={styles.freedomContainer}>
+          <Text style={styles.freedomEmoji}>🌟</Text>
+          <Text style={styles.freedomTitle}>{t.childHome.freeTitle.replace('{name}', childName)}</Text>
+          <Text style={styles.freedomSubtitle}>{t.childHome.freeSubtitle}</Text>
+          <View style={styles.freedomCard}>
+            <Text style={styles.freedomCardEmoji}>🔁</Text>
+            <Text style={styles.freedomCardText}>
+              {language === 'en'
+                ? "Great job today! Your next task will be available tomorrow. Keep it up!"
+                : "כל הכבוד על היום! המשימה הבאה תהיה זמינה מחר. המשך כך!"}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.badgesButton}
+            onPress={() => navigation.navigate('Badges')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={['#f7971e', '#ffd200']} style={styles.badgesButtonGradient}>
+              <Text style={styles.badgesButtonText}>{t.childHome.badgesBtn}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutBtnText}>{t.childHome.logoutBtn}</Text>
+          </TouchableOpacity>
+          <Text style={styles.footerText}>{t.childHome.footer}</Text>
         </ScrollView>
       </LinearGradient>
     );

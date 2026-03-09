@@ -29,7 +29,7 @@ export default function TasksListScreen({ navigation }: any) {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
 
   useEffect(() => {
     const q = query(
@@ -336,81 +336,102 @@ export default function TasksListScreen({ navigation }: any) {
         </View>
       </View>
 
-      {activePunishment.tasks.map((task: any) => (
-        <View
-          key={task.id}
-          style={[styles.taskCard, task.status === 'approved' && styles.completedTaskCard]}
-        >
-          <View style={styles.taskHeader}>
-            <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : task.homeworkPhotoUrl ? '📚' : '📝'}</Text>
-            <View style={styles.taskInfo}>
-              <Text style={styles.taskTitle}>{task.title}</Text>
-              <Text style={styles.taskDescription}>{task.description}</Text>
-              {task.parentNote ? (
-                <Text style={styles.taskParentNotePreview} numberOfLines={1}>👨‍👩‍👧 {task.parentNote}</Text>
-              ) : null}
+      {activePunishment.tasks.map((task: any) => {
+        const today = new Date().toISOString().split('T')[0];
+        const isLocked = task.unlockDate && task.unlockDate > today;
+
+        if (isLocked) {
+          return (
+            <View key={task.id} style={[styles.taskCard, styles.lockedTaskCard]}>
+              <View style={styles.taskHeader}>
+                <Text style={styles.taskIcon}>🔒</Text>
+                <View style={styles.taskInfo}>
+                  <Text style={[styles.taskTitle, { color: '#BDC3C7' }]}>{task.title}</Text>
+                  <Text style={styles.taskDescription}>
+                    {language === 'en' ? `Available ${task.unlockDate}` : `זמין מ-${task.unlockDate}`}
+                  </Text>
+                </View>
+              </View>
             </View>
-            {task.homeworkPhotoUrl && (
-              <Image source={{ uri: task.homeworkPhotoUrl }} style={styles.hwThumb} resizeMode="cover" />
+          );
+        }
+
+        return (
+          <View
+            key={task.id}
+            style={[styles.taskCard, task.status === 'approved' && styles.completedTaskCard]}
+          >
+            <View style={styles.taskHeader}>
+              <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : task.homeworkPhotoUrl ? '📚' : '📝'}</Text>
+              <View style={styles.taskInfo}>
+                <Text style={styles.taskTitle}>{task.title}</Text>
+                <Text style={styles.taskDescription}>{task.description}</Text>
+                {task.parentNote ? (
+                  <Text style={styles.taskParentNotePreview} numberOfLines={1}>👨‍👩‍👧 {task.parentNote}</Text>
+                ) : null}
+              </View>
+              {task.homeworkPhotoUrl && (
+                <Image source={{ uri: task.homeworkPhotoUrl }} style={styles.hwThumb} resizeMode="cover" />
+              )}
+            </View>
+
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
+              <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
+                {getStatusText(task.status)}
+              </Text>
+            </View>
+
+            {task.status === 'rejected' && task.rejectedReason && (
+              <View style={styles.rejectionNote}>
+                <Text style={[styles.rejectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.tasksList.rejectionReason}</Text>
+                <Text style={[styles.rejectionText, { textAlign: isRTL ? 'right' : 'left' }]}>{task.rejectedReason}</Text>
+              </View>
+            )}
+
+            {task.status === 'pending' && (
+              <TouchableOpacity
+                style={styles.startWrapper}
+                onPress={() => handleTaskComplete(task)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#c0392b', '#e74c3c']} style={styles.startButton}>
+                  <Text style={styles.startButtonText}>
+                    {task.type === 'quiz' ? t.tasksList.startQuiz : t.tasksList.markDone}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {task.status === 'submitted' && task.type !== 'quiz' && (
+              <TouchableOpacity
+                style={styles.startWrapper}
+                onPress={() => handleTaskComplete(task)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#F39C12', '#E67E22']} style={styles.startButton}>
+                  <Text style={styles.startButtonText}>
+                    ✏️ {t.tasksList.editSubmission || 'Edit Submission'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {task.status === 'rejected' && task.type !== 'quiz' && (
+              <TouchableOpacity
+                style={styles.startWrapper}
+                onPress={() => handleTaskComplete(task)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#8E54E9', '#4776E6']} style={styles.startButton}>
+                  <Text style={styles.startButtonText}>
+                    🔄 {t.tasksList.resubmit || 'Resubmit Task'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
             )}
           </View>
-
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
-              {getStatusText(task.status)}
-            </Text>
-          </View>
-
-          {task.status === 'rejected' && task.rejectedReason && (
-            <View style={styles.rejectionNote}>
-              <Text style={[styles.rejectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.tasksList.rejectionReason}</Text>
-              <Text style={[styles.rejectionText, { textAlign: isRTL ? 'right' : 'left' }]}>{task.rejectedReason}</Text>
-            </View>
-          )}
-
-          {task.status === 'pending' && (
-            <TouchableOpacity
-              style={styles.startWrapper}
-              onPress={() => handleTaskComplete(task)}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#c0392b', '#e74c3c']} style={styles.startButton}>
-                <Text style={styles.startButtonText}>
-                  {task.type === 'quiz' ? t.tasksList.startQuiz : t.tasksList.markDone}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-
-          {task.status === 'submitted' && task.type !== 'quiz' && (
-            <TouchableOpacity
-              style={styles.startWrapper}
-              onPress={() => handleTaskComplete(task)}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#F39C12', '#E67E22']} style={styles.startButton}>
-                <Text style={styles.startButtonText}>
-                  ✏️ {t.tasksList.editSubmission || 'Edit Submission'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-
-          {task.status === 'rejected' && task.type !== 'quiz' && (
-            <TouchableOpacity
-              style={styles.startWrapper}
-              onPress={() => handleTaskComplete(task)}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#8E54E9', '#4776E6']} style={styles.startButton}>
-                <Text style={styles.startButtonText}>
-                  🔄 {t.tasksList.resubmit || 'Resubmit Task'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </View>
-      ))}
+        );
+      })}
     </ScrollView>
   );
 }
@@ -453,6 +474,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#27AE60',
   },
+  lockedTaskCard: { opacity: 0.5, backgroundColor: '#F8F9FA' },
   taskHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   taskIcon: { fontSize: 28, marginLeft: 12 },
   taskInfo: { flex: 1 },
