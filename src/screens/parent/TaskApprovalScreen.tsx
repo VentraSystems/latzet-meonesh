@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { notifyTaskApproved, notifyTaskRejected } from '../../utils/notifications';
 import { showAlert } from '../../utils/alert';
@@ -25,20 +25,18 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const { t, isRTL } = useLanguage();
 
-  useEffect(() => { loadPunishment(); }, []);
-
-  const loadPunishment = async () => {
-    try {
-      const punishmentDoc = await getDoc(doc(db, 'punishments', punishmentId));
-      if (punishmentDoc.exists()) {
-        setPunishment({ id: punishmentDoc.id, ...punishmentDoc.data() });
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'punishments', punishmentId), (snap) => {
+      if (snap.exists()) {
+        setPunishment({ id: snap.id, ...snap.data() });
       }
-    } catch (error) {
-      showAlert(t.common.error, t.taskApproval.errorLoad);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, () => {
+      showAlert(t.common.error, t.taskApproval.errorLoad);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, [punishmentId]);
 
   const handleApprove = async (taskId: string) => {
     showAlert(
@@ -90,7 +88,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
                 if (pointsMsg || badgesMsg) {
                   showAlert(t.taskApproval.approvedTitle, `${pointsMsg}${badgesMsg}`);
                 }
-                await loadPunishment();
+                // onSnapshot listener updates the UI automatically
               }
             } catch (error) {
               showAlert(t.common.error, t.taskApproval.errorApprove);
@@ -116,7 +114,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
       );
       await updateDoc(doc(db, 'punishments', punishmentId), { tasks: updatedTasks });
       await notifyTaskRejected(punishment.childId, task.title, rejectionReason, punishmentId, selectedTaskId);
-      await loadPunishment();
+      // onSnapshot listener updates the UI automatically
     } catch (error) {
       showAlert(t.common.error, t.taskApproval.errorReject);
     } finally {
