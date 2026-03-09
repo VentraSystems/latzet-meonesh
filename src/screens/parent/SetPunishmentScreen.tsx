@@ -61,6 +61,11 @@ export default function SetPunishmentScreen({ navigation }: any) {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
 
+  // No-phone duration picker
+  const [noPhoneExpanded, setNoPhoneExpanded] = useState(false);
+  const [noPhoneDuration, setNoPhoneDuration] = useState(1); // hours
+  const [noPhoneConfirmed, setNoPhoneConfirmed] = useState<number | null>(null); // confirmed hours
+
   // AI quiz: which subject card is expanded for config
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
   // Map of subjectId -> config for added quizzes
@@ -208,6 +213,20 @@ export default function SetPunishmentScreen({ navigation }: any) {
       const presetTasks = selectedTasks.map((taskId) => {
         const preset = taskPresets.find((t) => t.id === taskId);
         if (preset) {
+          // Special case: no-phone with chosen duration
+          if (taskId === 'no-phone-hour' && noPhoneConfirmed !== null) {
+            const dur = fmtDuration(noPhoneConfirmed);
+            return {
+              id: taskId,
+              title: language === 'en' ? `📵 No Phone — ${dur}` : `📵 בלי טלפון — ${dur}`,
+              description: language === 'en'
+                ? `No phone use for ${dur}`
+                : `לא להשתמש בטלפון למשך ${dur}`,
+              type: preset.type,
+              status: 'pending',
+              noPhoneHours: noPhoneConfirmed,
+            };
+          }
           return {
             id: taskId,
             title: language === 'en' ? preset.titleEn : preset.title,
@@ -290,6 +309,30 @@ export default function SetPunishmentScreen({ navigation }: any) {
     }
   };
 
+  const NO_PHONE_DURATIONS = [0.5, 1, 2, 3, 4, 6, 8, 12, 24];
+
+  const fmtDuration = (h: number) => {
+    if (language === 'en') {
+      return h === 0.5 ? '30 min' : h === 1 ? '1 hour' : `${h} hours`;
+    } else {
+      return h === 0.5 ? '30 דק\'' : h === 1 ? 'שעה' : `${h} שעות`;
+    }
+  };
+
+  const confirmNoPhone = () => {
+    setNoPhoneConfirmed(noPhoneDuration);
+    setNoPhoneExpanded(false);
+    if (!selectedTasks.includes('no-phone-hour')) {
+      setSelectedTasks((prev) => [...prev, 'no-phone-hour']);
+    }
+  };
+
+  const removeNoPhone = () => {
+    setNoPhoneConfirmed(null);
+    setNoPhoneExpanded(false);
+    setSelectedTasks((prev) => prev.filter((id) => id !== 'no-phone-hour'));
+  };
+
   const choreTasks = taskPresets.filter((t) => t.category === 'chores');
   const behaviorTasks = taskPresets.filter((t) => t.category === 'behavior');
 
@@ -344,6 +387,63 @@ export default function SetPunishmentScreen({ navigation }: any) {
         <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.behavior}</Text>
         <View style={styles.taskGrid}>
           {behaviorTasks.map((task) => {
+            if (task.id === 'no-phone-hour') {
+              const isConfirmed = noPhoneConfirmed !== null;
+              const isExpanded = noPhoneExpanded;
+              return (
+                <View key={task.id} style={styles.noPhoneWrap}>
+                  <TouchableOpacity
+                    style={[styles.taskCard, styles.noPhoneCard, isConfirmed && styles.taskCardSelected, isExpanded && styles.noPhoneCardExpanded]}
+                    onPress={() => {
+                      if (isExpanded) { setNoPhoneExpanded(false); return; }
+                      setNoPhoneDuration(noPhoneConfirmed ?? 1);
+                      setNoPhoneExpanded(true);
+                    }}
+                  >
+                    <Text style={styles.taskCardIcon}>{task.icon}</Text>
+                    <Text style={[styles.taskCardTitle, isConfirmed && styles.taskCardTitleSelected]}>
+                      {isConfirmed
+                        ? (language === 'en' ? `No Phone — ${fmtDuration(noPhoneConfirmed!)}` : `בלי טלפון — ${fmtDuration(noPhoneConfirmed!)}`)
+                        : (language === 'en' ? task.titleEn : task.title)}
+                    </Text>
+                    <Text style={[styles.noPhoneHint, isConfirmed && { color: '#27AE60' }]}>
+                      {isExpanded ? '▲' : '▼'} {language === 'en' ? 'choose duration' : 'בחר זמן'}
+                    </Text>
+                    {isConfirmed && <Text style={styles.taskCardCheck}>✓</Text>}
+                  </TouchableOpacity>
+
+                  {isExpanded && (
+                    <View style={styles.noPhonePanel}>
+                      <Text style={styles.noPanelTitle}>{language === 'en' ? '📵 No Phone — choose duration' : '📵 בלי טלפון — בחר כמה זמן'}</Text>
+                      <View style={styles.pillRow}>
+                        {NO_PHONE_DURATIONS.map((h) => (
+                          <TouchableOpacity
+                            key={h}
+                            style={[styles.pill, noPhoneDuration === h && styles.noPhonePillSelected]}
+                            onPress={() => setNoPhoneDuration(h)}
+                          >
+                            <Text style={[styles.pillText, noPhoneDuration === h && styles.pillTextSelected]}>
+                              {fmtDuration(h)}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <View style={styles.noPanelButtons}>
+                        <TouchableOpacity style={styles.noPhoneConfirmBtn} onPress={confirmNoPhone}>
+                          <Text style={styles.confirmButtonText}>{language === 'en' ? `Add — ${fmtDuration(noPhoneDuration)}` : `הוסף — ${fmtDuration(noPhoneDuration)}`}</Text>
+                        </TouchableOpacity>
+                        {isConfirmed && (
+                          <TouchableOpacity style={styles.noPhoneRemoveBtn} onPress={removeNoPhone}>
+                            <Text style={styles.confirmButtonText}>{language === 'en' ? 'Remove' : 'הסר'}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            }
+
             const selected = selectedTasks.includes(task.id);
             return (
               <TouchableOpacity
@@ -567,6 +667,21 @@ const styles = StyleSheet.create({
   taskCardTitle: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center' },
   taskCardTitleSelected: { color: '#27AE60' },
   taskCardCheck: { position: 'absolute', top: 6, left: 8, fontSize: 16, color: '#27AE60', fontWeight: 'bold' },
+
+  // No-phone duration picker
+  noPhoneWrap: { width: '100%' },
+  noPhoneCard: { width: '100%', borderRadius: 12, borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
+  noPhoneCardExpanded: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  noPhoneHint: { fontSize: 11, color: '#95A5A6', marginTop: 4 },
+  noPhonePanel: {
+    backgroundColor: '#FAFAFA', borderWidth: 2, borderTopWidth: 0, borderColor: '#E0E0E0',
+    borderBottomLeftRadius: 12, borderBottomRightRadius: 12, padding: 14, marginBottom: 4,
+  },
+  noPanelTitle: { fontSize: 14, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center', marginBottom: 12 },
+  noPanelButtons: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  noPhoneConfirmBtn: { flex: 1, borderRadius: 10, padding: 12, alignItems: 'center', backgroundColor: '#E74C3C' },
+  noPhoneRemoveBtn: { borderRadius: 10, padding: 12, alignItems: 'center', paddingHorizontal: 20, backgroundColor: '#95A5A6' },
+  noPhonePillSelected: { backgroundColor: '#E74C3C', borderColor: '#E74C3C' },
 
   // Subject grid (AI quizzes)
   subjectGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
