@@ -7,15 +7,26 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Image,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, addDoc, getDoc, doc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { taskPresets } from '../../data/taskPresets';
 import { notifyNewPunishment } from '../../utils/notifications';
 import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
+import * as ImagePicker from 'expo-image-picker';
+
+interface HomeworkTask {
+  _id: string;
+  title: string;
+  description: string;
+  photoUri: string | null;
+}
 
 const AI_QUIZ_URL = 'https://escapechallenge.ventrasystems.com/api/generate-quiz';
 const AI_SUGGEST_URL = 'https://escapechallenge.ventrasystems.com/api/suggest-tasks';
@@ -60,6 +71,12 @@ export default function SetPunishmentScreen({ navigation }: any) {
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
+
+  // Homework tasks
+  const [homeworkTasks, setHomeworkTasks] = useState<HomeworkTask[]>([]);
+  const [hwTitle, setHwTitle] = useState('');
+  const [hwDesc, setHwDesc] = useState('');
+  const [hwPhotoUri, setHwPhotoUri] = useState<string | null>(null);
 
   // No-phone duration picker
   const [noPhoneExpanded, setNoPhoneExpanded] = useState(false);
@@ -159,7 +176,48 @@ export default function SetPunishmentScreen({ navigation }: any) {
     });
   };
 
-  const totalCount = selectedTasks.length + Object.keys(aiQuizzes).length + selectedSuggestionIds.length;
+  const PICK_OPTS: ImagePicker.ImagePickerOptions = {
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    quality: 0.4,
+    exif: false,
+  };
+
+  const pickHwPhoto = async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync(PICK_OPTS);
+    if (!result.canceled && result.assets[0]) setHwPhotoUri(result.assets[0].uri);
+  };
+
+  const addHomeworkTask = () => {
+    if (!hwTitle.trim()) return;
+    setHomeworkTasks((prev) => [...prev, { _id: `hw-${Date.now()}`, title: hwTitle.trim(), description: hwDesc.trim(), photoUri: hwPhotoUri }]);
+    setHwTitle('');
+    setHwDesc('');
+    setHwPhotoUri(null);
+  };
+
+  const removeHomeworkTask = (id: string) => setHomeworkTasks((prev) => prev.filter((h) => h._id !== id));
+
+  const uploadHomeworkPhoto = (uri: string, tempId: string): Promise<string> =>
+    new Promise(async (resolve, reject) => {
+      try {
+        const blob = await (await fetch(uri)).blob();
+        const uploadTask = uploadBytesResumable(
+          ref(storage, `homework-photos/${user!.uid}/${tempId}/${Date.now()}.jpg`),
+          blob,
+          { contentType: 'image/jpeg' }
+        );
+        uploadTask.on('state_changed', null, reject, async () => {
+          resolve(await getDownloadURL(uploadTask.snapshot.ref));
+        });
+      } catch (e) { reject(e); }
+    });
+
+  const totalCount = selectedTasks.length + Object.keys(aiQuizzes).length + selectedSuggestionIds.length + homeworkTasks.length;
 
   const createPunishment = async () => {
     if (!punishmentName.trim()) {
@@ -178,6 +236,18 @@ export default function SetPunishmentScreen({ navigation }: any) {
     setLoading(true);
 
     try {
+      // Upload homework photos
+      let homeworkWithUrls: (HomeworkTask & { photoUrl: string | null })[] = [];
+      if (homeworkTasks.length > 0) {
+        setLoadingMsg(language === 'en' ? 'Uploading homework photos...' : 'מעלה תמונות שיעורים...');
+        homeworkWithUrls = await Promise.all(
+          homeworkTasks.map(async (hw) => ({
+            ...hw,
+            photoUrl: hw.photoUri ? await uploadHomeworkPhoto(hw.photoUri, hw._id) : null,
+          }))
+        );
+      }
+
       // Generate all AI quizzes in parallel
       const aiSubjectIds = Object.keys(aiQuizzes);
       let generatedQuizzes: Record<string, any> = {};
@@ -284,7 +354,18 @@ export default function SetPunishmentScreen({ navigation }: any) {
         };
       }).filter(Boolean);
 
-      const allTasks = [...presetTasks, ...aiTasks, ...suggestionTasks];
+      // Build homework tasks
+      const hwTasksFinal = homeworkWithUrls.map((hw) => ({
+        id: hw._id,
+        title: `📚 ${hw.title}`,
+        description: hw.description || (language === 'en' ? 'Complete the attached homework' : 'בצע את שיעורי הבית המצורפים'),
+        type: 'task',
+        category: 'homework',
+        status: 'pending',
+        ...(hw.photoUrl ? { homeworkPhotoUrl: hw.photoUrl } : {}),
+      }));
+
+      const allTasks = [...presetTasks, ...aiTasks, ...suggestionTasks, ...hwTasksFinal];
 
       const punishmentRef = await addDoc(collection(db, 'punishments'), {
         name: punishmentName,
@@ -460,6 +541,70 @@ export default function SetPunishmentScreen({ navigation }: any) {
             );
           })}
         </View>
+      </View>
+
+      {/* Homework */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+          📚 {language === 'en' ? 'Homework Assignment' : 'שיעורי בית'}
+        </Text>
+        <Text style={[styles.sectionHint, { textAlign: isRTL ? 'right' : 'left' }]}>
+          {language === 'en' ? 'Add a homework task — optionally attach a photo of the assignment sheet' : 'הוסף שיעור בית — אפשר לצרף תמונה של הדף'}
+        </Text>
+
+        <View style={styles.hwInputGroup}>
+          <TextInput
+            style={styles.hwTitleInput}
+            placeholder={language === 'en' ? 'Homework title (e.g. Math p.42)' : 'שם השיעור (למשל: מתמטיקה עמ׳ 42)'}
+            value={hwTitle}
+            onChangeText={setHwTitle}
+            textAlign={isRTL ? 'right' : 'left'}
+          />
+          <TextInput
+            style={styles.hwDescInput}
+            placeholder={language === 'en' ? 'Instructions (optional)' : 'הוראות (אופציונלי)'}
+            value={hwDesc}
+            onChangeText={setHwDesc}
+            multiline
+            numberOfLines={2}
+            textAlign={isRTL ? 'right' : 'left'}
+          />
+
+          <View style={styles.hwPhotoRow}>
+            {hwPhotoUri ? (
+              <View style={styles.hwPhotoPreview}>
+                <Image source={{ uri: hwPhotoUri }} style={styles.hwPhotoThumb} resizeMode="cover" />
+                <TouchableOpacity onPress={() => setHwPhotoUri(null)} style={styles.hwPhotoRemove}>
+                  <Text style={styles.hwPhotoRemoveText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.hwPhotoBtn} onPress={pickHwPhoto}>
+                <Text style={styles.hwPhotoBtnText}>📎 {language === 'en' ? 'Attach homework photo' : 'צרף תמונה של הדף'}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.hwAddBtn, !hwTitle.trim() && styles.hwAddBtnDisabled]}
+              onPress={addHomeworkTask}
+              disabled={!hwTitle.trim()}
+            >
+              <Text style={styles.hwAddBtnText}>➕ {language === 'en' ? 'Add' : 'הוסף'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {homeworkTasks.map((hw) => (
+          <View key={hw._id} style={styles.hwChip}>
+            <TouchableOpacity onPress={() => removeHomeworkTask(hw._id)} style={styles.hwChipRemove}>
+              <Text style={styles.hwChipRemoveText}>✕</Text>
+            </TouchableOpacity>
+            {hw.photoUri && <Image source={{ uri: hw.photoUri }} style={styles.hwChipThumb} resizeMode="cover" />}
+            <View style={styles.hwChipText}>
+              <Text style={styles.hwChipTitle}>📚 {hw.title}</Text>
+              {hw.description ? <Text style={styles.hwChipDesc} numberOfLines={1}>{hw.description}</Text> : null}
+            </View>
+          </View>
+        ))}
       </View>
 
       {/* AI Learning Quizzes */}
@@ -749,4 +894,26 @@ const styles = StyleSheet.create({
   loadingText: { color: '#FFFFFF', fontSize: 15 },
   cancelButton: { padding: 12, alignItems: 'center', marginBottom: 40 },
   cancelButtonText: { color: '#7F8C8D', fontSize: 16 },
+
+  // Homework
+  hwInputGroup: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 10 },
+  hwTitleInput: { fontSize: 15, borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, padding: 10, marginBottom: 8, backgroundColor: '#F8F9FA' },
+  hwDescInput: { fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, padding: 10, marginBottom: 10, backgroundColor: '#F8F9FA', minHeight: 56 },
+  hwPhotoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hwPhotoBtn: { flex: 1, borderWidth: 1, borderColor: '#3498DB', borderRadius: 10, padding: 10, alignItems: 'center' },
+  hwPhotoBtnText: { color: '#3498DB', fontSize: 13, fontWeight: '600' },
+  hwPhotoPreview: { flex: 1, position: 'relative' },
+  hwPhotoThumb: { width: '100%', height: 60, borderRadius: 8 },
+  hwPhotoRemove: { position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  hwPhotoRemoveText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
+  hwAddBtn: { backgroundColor: '#27AE60', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
+  hwAddBtnDisabled: { backgroundColor: '#BDC3C7' },
+  hwAddBtnText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 },
+  hwChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EBF8FF', borderRadius: 12, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#3498DB', gap: 8 },
+  hwChipRemove: { padding: 4 },
+  hwChipRemoveText: { color: '#E74C3C', fontWeight: 'bold', fontSize: 14 },
+  hwChipThumb: { width: 44, height: 44, borderRadius: 6 },
+  hwChipText: { flex: 1 },
+  hwChipTitle: { fontSize: 14, fontWeight: 'bold', color: '#2C3E50' },
+  hwChipDesc: { fontSize: 12, color: '#7F8C8D', marginTop: 2 },
 });

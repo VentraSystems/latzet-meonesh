@@ -218,6 +218,14 @@ export default function TasksListScreen({ navigation }: any) {
           <View style={styles.taskCard}>
             <Text style={styles.taskTitle}>{selectedTask.title}</Text>
             <Text style={styles.taskDescription}>{selectedTask.description}</Text>
+            {selectedTask.homeworkPhotoUrl && (
+              <View style={styles.hwPhotoContainer}>
+                <Text style={[styles.hwPhotoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {t.tasksList.homeworkSheet || '📄 Homework sheet:'}
+                </Text>
+                <Image source={{ uri: selectedTask.homeworkPhotoUrl }} style={styles.hwPhoto} resizeMode="contain" />
+              </View>
+            )}
           </View>
 
           {/* Photo Upload */}
@@ -304,11 +312,14 @@ export default function TasksListScreen({ navigation }: any) {
           style={[styles.taskCard, task.status === 'approved' && styles.completedTaskCard]}
         >
           <View style={styles.taskHeader}>
-            <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : '📝'}</Text>
+            <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : task.homeworkPhotoUrl ? '📚' : '📝'}</Text>
             <View style={styles.taskInfo}>
               <Text style={styles.taskTitle}>{task.title}</Text>
               <Text style={styles.taskDescription}>{task.description}</Text>
             </View>
+            {task.homeworkPhotoUrl && (
+              <Image source={{ uri: task.homeworkPhotoUrl }} style={styles.hwThumb} resizeMode="cover" />
+            )}
           </View>
 
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
@@ -391,6 +402,10 @@ const styles = StyleSheet.create({
   rejectionNote: { backgroundColor: '#FFE5E5', borderRadius: 10, padding: 12, marginTop: 10 },
   rejectionLabel: { fontSize: 13, fontWeight: 'bold', color: '#E74C3C', marginBottom: 4, textAlign: 'right' },
   rejectionText: { fontSize: 13, color: '#E74C3C', textAlign: 'right' },
+  hwThumb: { width: 52, height: 52, borderRadius: 8, marginLeft: 8 },
+  hwPhotoContainer: { marginTop: 12, backgroundColor: '#F0F7FF', borderRadius: 10, padding: 10 },
+  hwPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#3498DB', marginBottom: 8 },
+  hwPhoto: { width: '100%', height: 220, borderRadius: 8, backgroundColor: '#E8F4FD' },
   startWrapper: { borderRadius: 12, overflow: 'hidden', marginTop: 12 },
   startButton: { padding: 14, alignItems: 'center' },
   startButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
