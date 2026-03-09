@@ -198,6 +198,14 @@ export default function ParentHomeScreen({ navigation }: any) {
         >
           <Text style={styles.secondaryButtonText}>{t.parentHome.settings}</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.reconnectButton}
+          onPress={() => navigation.navigate('LinkChild')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.reconnectButtonText}>🔗 {t.parentHome.reconnectChild}</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
@@ -447,6 +455,15 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#4776E6',
     fontSize: 17,
+    fontWeight: '600',
+  },
+  reconnectButton: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  reconnectButtonText: {
+    color: '#95A5A6',
+    fontSize: 14,
     fontWeight: '600',
   },
   footer: {
