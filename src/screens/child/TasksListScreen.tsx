@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { notifyTaskSubmitted } from '../../utils/notifications';
 import { showAlert } from '../../utils/alert';
 import * as ImagePicker from 'expo-image-picker';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function TasksListScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export default function TasksListScreen({ navigation }: any) {
   const [taskNote, setTaskNote] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const { t, isRTL } = useLanguage();
 
   useEffect(() => {
     const q = query(
@@ -60,7 +62,7 @@ export default function TasksListScreen({ navigation }: any) {
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        showAlert('אין הרשאה', 'נדרשת הרשאת גישה לגלריה');
+        showAlert(t.tasksList.permissionRequired, t.tasksList.errorGallery);
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -79,7 +81,7 @@ export default function TasksListScreen({ navigation }: any) {
     if (Platform.OS === 'web') { pickPhoto(); return; }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      showAlert('אין הרשאה', 'נדרשת הרשאת גישה למצלמה');
+      showAlert(t.tasksList.permissionRequired, t.tasksList.errorCamera);
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -154,14 +156,14 @@ export default function TasksListScreen({ navigation }: any) {
         selectedTask.id
       );
 
-      showAlert('נשלח! 🎉', photoUrl ? 'המשימה נשלחה עם תמונת הוכחה!' : 'המשימה נשלחה לאישור ההורה', [
+      showAlert(t.tasksList.successSubmitTitle, photoUrl ? t.tasksList.successSubmitPhoto : t.tasksList.successSubmit, [
         {
-          text: 'אישור',
+          text: t.common.ok,
           onPress: () => { setSelectedTask(null); setTaskNote(''); setPhotoUri(null); },
         },
       ]);
     } catch (error) {
-      showAlert('שגיאה', 'לא הצלחנו לשלוח את המשימה');
+      showAlert(t.common.error, t.tasksList.errorSubmit);
     } finally {
       setUploading(false);
     }
@@ -178,10 +180,10 @@ export default function TasksListScreen({ navigation }: any) {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'approved': return 'אושר ✅';
-      case 'submitted': return 'ממתין לאישור ⏳';
-      case 'rejected': return 'נדחה ❌';
-      default: return 'ממתין להגשה 📝';
+      case 'approved': return t.tasksList.statusApproved;
+      case 'submitted': return t.tasksList.statusSubmitted;
+      case 'rejected': return t.tasksList.statusRejected;
+      default: return t.tasksList.statusPending;
     }
   };
 
@@ -197,8 +199,8 @@ export default function TasksListScreen({ navigation }: any) {
     return (
       <View style={styles.emptyState}>
         <Text style={styles.emptyEmoji}>🎉</Text>
-        <Text style={styles.emptyTitle}>אין לך עונש כרגע!</Text>
-        <Text style={styles.emptyText}>תהנה מהזמן החופשי שלך 😊</Text>
+        <Text style={styles.emptyTitle}>{t.tasksList.noTask}</Text>
+        <Text style={styles.emptyText}>{t.tasksList.noTaskSub}</Text>
       </View>
     );
   }
@@ -207,7 +209,7 @@ export default function TasksListScreen({ navigation }: any) {
     return (
       <View style={styles.container}>
         <ScrollView style={styles.submitContainer} showsVerticalScrollIndicator={false}>
-          <Text style={styles.submitTitle}>השלמת את המשימה?</Text>
+          <Text style={styles.submitTitle}>{t.tasksList.submitTitle}</Text>
 
           <View style={styles.taskCard}>
             <Text style={styles.taskTitle}>{selectedTask.title}</Text>
@@ -216,37 +218,37 @@ export default function TasksListScreen({ navigation }: any) {
 
           {/* Photo Upload */}
           <View style={styles.photoSection}>
-            <Text style={styles.photoSectionTitle}>📸 הוסף תמונת הוכחה (אופציונלי)</Text>
+            <Text style={[styles.photoSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.tasksList.addPhoto}</Text>
             {photoUri ? (
               <View style={styles.photoPreview}>
                 <Image source={{ uri: photoUri }} style={styles.photoImg} resizeMode="cover" />
                 <TouchableOpacity style={styles.removePhoto} onPress={() => setPhotoUri(null)}>
-                  <Text style={styles.removePhotoText}>✕ הסר תמונה</Text>
+                  <Text style={styles.removePhotoText}>{t.tasksList.removePhoto}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.photoButtons}>
                 {Platform.OS !== 'web' && (
                   <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
-                    <Text style={styles.photoBtnText}>📷 צלם תמונה</Text>
+                    <Text style={styles.photoBtnText}>{t.tasksList.takePhoto}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto}>
-                  <Text style={styles.photoBtnText}>🖼️ בחר מהגלריה</Text>
+                  <Text style={styles.photoBtnText}>{t.tasksList.gallery}</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
-          <Text style={styles.noteLabel}>הוסף הערה (אופציונלי)</Text>
+          <Text style={[styles.noteLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.tasksList.addNote}</Text>
           <TextInput
             style={styles.noteInput}
-            placeholder="למשל: 'סידרתי את כל הדברים בארון'"
+            placeholder={t.tasksList.notePlaceholder}
             value={taskNote}
             onChangeText={setTaskNote}
             multiline
             numberOfLines={4}
-            textAlign="right"
+            textAlign={isRTL ? 'right' : 'left'}
           />
 
           <TouchableOpacity
@@ -259,7 +261,7 @@ export default function TasksListScreen({ navigation }: any) {
               {uploading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.submitButtonText}>שלח לאישור ההורה {photoUri ? '📸' : ''}</Text>
+                <Text style={styles.submitButtonText}>{photoUri ? t.tasksList.submitBtnPhoto : t.tasksList.submitBtn}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -268,7 +270,7 @@ export default function TasksListScreen({ navigation }: any) {
             style={styles.cancelButton}
             onPress={() => { setSelectedTask(null); setTaskNote(''); setPhotoUri(null); }}
           >
-            <Text style={styles.cancelButtonText}>ביטול</Text>
+            <Text style={styles.cancelButtonText}>{t.tasksList.cancel}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -281,7 +283,7 @@ export default function TasksListScreen({ navigation }: any) {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>המשימות שלך</Text>
+        <Text style={styles.title}>{t.tasksList.yourTasks}</Text>
         <View style={styles.progressPill}>
           <Text style={styles.progressPillText}>{approved} / {total}</Text>
         </View>
@@ -308,8 +310,8 @@ export default function TasksListScreen({ navigation }: any) {
 
           {task.status === 'rejected' && task.rejectedReason && (
             <View style={styles.rejectionNote}>
-              <Text style={styles.rejectionLabel}>סיבת הדחייה:</Text>
-              <Text style={styles.rejectionText}>{task.rejectedReason}</Text>
+              <Text style={[styles.rejectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.tasksList.rejectionReason}</Text>
+              <Text style={[styles.rejectionText, { textAlign: isRTL ? 'right' : 'left' }]}>{task.rejectedReason}</Text>
             </View>
           )}
 
@@ -321,7 +323,7 @@ export default function TasksListScreen({ navigation }: any) {
             >
               <LinearGradient colors={['#c0392b', '#e74c3c']} style={styles.startButton}>
                 <Text style={styles.startButtonText}>
-                  {task.type === 'quiz' ? 'התחל חידון 🧠' : 'סמן כהושלם ✓'}
+                  {task.type === 'quiz' ? t.tasksList.startQuiz : t.tasksList.markDone}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>

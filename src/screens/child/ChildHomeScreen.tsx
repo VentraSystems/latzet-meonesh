@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function ChildHomeScreen({ navigation }: any) {
   const { user, linkedUserId, logout } = useAuth();
@@ -13,6 +14,7 @@ export default function ChildHomeScreen({ navigation }: any) {
   const [hasShownFreedom, setHasShownFreedom] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [badgeCount, setBadgeCount] = useState(0);
+  const { t, isRTL } = useLanguage();
 
   useEffect(() => {
     if (!user) {
@@ -86,10 +88,10 @@ export default function ChildHomeScreen({ navigation }: any) {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'approved': return 'אושר';
-      case 'submitted': return 'ממתין לאישור';
-      case 'rejected': return 'נדחה';
-      default: return 'ממתין להגשה';
+      case 'approved': return t.tasksList.statusApproved;
+      case 'submitted': return t.tasksList.statusSubmitted;
+      case 'rejected': return t.tasksList.statusRejected;
+      default: return t.tasksList.statusPending;
     }
   };
 
@@ -107,15 +109,13 @@ export default function ChildHomeScreen({ navigation }: any) {
       <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.fullScreen}>
         <ScrollView contentContainerStyle={styles.freedomContainer}>
           <Text style={styles.freedomEmoji}>🎉</Text>
-          <Text style={styles.freedomTitle}>שלום {childName}!</Text>
-          <Text style={styles.freedomSubtitle}>אתה חופשי לגמרי!</Text>
-          <Text style={styles.freedomSubtitle}>אין לך עונשים כרגע 🌟</Text>
+          <Text style={styles.freedomTitle}>{t.childHome.freeTitle.replace('{name}', childName)}</Text>
+          <Text style={styles.freedomSubtitle}>{t.childHome.freeSubtitle}</Text>
+          <Text style={styles.freedomSubtitle}>{t.childHome.freeSub2}</Text>
 
           <View style={styles.freedomCard}>
             <Text style={styles.freedomCardEmoji}>💡</Text>
-            <Text style={styles.freedomCardText}>
-              התנהגות טובה עוזרת לך להישאר חופשי!
-            </Text>
+            <Text style={styles.freedomCardText}>{t.childHome.freeCard}</Text>
           </View>
 
           <TouchableOpacity
@@ -124,15 +124,15 @@ export default function ChildHomeScreen({ navigation }: any) {
             activeOpacity={0.85}
           >
             <LinearGradient colors={['#f7971e', '#ffd200']} style={styles.badgesButtonGradient}>
-              <Text style={styles.badgesButtonText}>🏆 הישגים ותגים שלי</Text>
+              <Text style={styles.badgesButtonText}>{t.childHome.badgesBtn}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.logoutBtnText}>התנתק</Text>
+            <Text style={styles.logoutBtnText}>{t.childHome.logoutBtn}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.footerText}>Ventra Software Systems LTD</Text>
+          <Text style={styles.footerText}>{t.childHome.footer}</Text>
         </ScrollView>
       </LinearGradient>
     );
@@ -150,18 +150,18 @@ export default function ChildHomeScreen({ navigation }: any) {
         {/* Points & Badges Row */}
         <View style={styles.statsTopRow}>
           <TouchableOpacity style={styles.pointsPill} onPress={() => navigation.navigate('Badges')} activeOpacity={0.8}>
-            <Text style={styles.pointsPillText}>⭐ {totalPoints} נק'</Text>
+            <Text style={styles.pointsPillText}>⭐ {totalPoints} {t.childHome.points}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.badgesPill} onPress={() => navigation.navigate('Badges')} activeOpacity={0.8}>
-            <Text style={styles.badgesPillText}>🏆 {badgeCount} תגים</Text>
+            <Text style={styles.badgesPillText}>🏆 {badgeCount} {t.childHome.badges}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.logoutPill} onPress={logout} activeOpacity={0.8}>
-            <Text style={styles.logoutPillText}>התנתק</Text>
+            <Text style={styles.logoutPillText}>{t.childHome.logoutPill}</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.headerEmoji}>😔</Text>
-        <Text style={styles.headerTitle}>שלום {childName}!</Text>
-        <Text style={styles.headerSubtitle}>אתה בעונש</Text>
+        <Text style={styles.headerTitle}>{t.childHome.freeTitle.replace('{name}', childName)}</Text>
+        <Text style={styles.headerSubtitle}>{t.childHome.inPunishment}</Text>
         <View style={styles.punishmentNameBadge}>
           <Text style={styles.punishmentName}>{activePunishment.name}</Text>
         </View>
@@ -171,20 +171,22 @@ export default function ChildHomeScreen({ navigation }: any) {
       {remaining > 0 && (
         <View style={styles.motivationBanner}>
           <Text style={styles.motivationText}>
-            💪 עוד {remaining} {remaining === 1 ? 'משימה' : 'משימות'} ואתה חופשי!
+            {remaining === 1
+              ? t.childHome.motivationBanner1.replace('{n}', String(remaining))
+              : t.childHome.motivationBannerN.replace('{n}', String(remaining))}
           </Text>
         </View>
       )}
 
       {/* Progress Card */}
       <View style={styles.progressCard}>
-        <Text style={styles.progressTitle}>ההתקדמות שלך</Text>
+        <Text style={styles.progressTitle}>{t.childHome.progressTitle}</Text>
         <View style={styles.progressNumbers}>
           <Text style={styles.progressBig}>{completedTasks}</Text>
           <Text style={styles.progressSlash}> / </Text>
           <Text style={styles.progressTotal}>{totalTasks}</Text>
         </View>
-        <Text style={styles.progressLabel}>משימות הושלמו</Text>
+        <Text style={styles.progressLabel}>{t.badges.tasksCompleted}</Text>
 
         <View style={styles.progressBarBg}>
           <LinearGradient
@@ -197,13 +199,13 @@ export default function ChildHomeScreen({ navigation }: any) {
 
         <View style={styles.progressPctRow}>
           <Text style={styles.progressPctText}>{Math.round(progress)}%</Text>
-          {progress === 100 && <Text style={styles.allDoneText}>הכל הושלם! 🎉</Text>}
+          {progress === 100 && <Text style={styles.allDoneText}>{t.common.success} 🎉</Text>}
         </View>
       </View>
 
       {/* Tasks */}
       <View style={styles.tasksSection}>
-        <Text style={styles.sectionTitle}>המשימות שלך</Text>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.tasksList.yourTasks}</Text>
         {tasks.map((task: any) => (
           <TouchableOpacity
             key={task.id}
@@ -215,8 +217,8 @@ export default function ChildHomeScreen({ navigation }: any) {
               <Text style={styles.taskEmoji}>{getStatusEmoji(task.status)}</Text>
             </View>
             <View style={styles.taskInfo}>
-              <Text style={styles.taskTitle}>{task.title}</Text>
-              <Text style={[styles.taskStatus, { color: getStatusColor(task.status) }]}>
+              <Text style={[styles.taskTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{task.title}</Text>
+              <Text style={[styles.taskStatus, { color: getStatusColor(task.status), textAlign: isRTL ? 'right' : 'left' }]}>
                 {getStatusText(task.status)}
               </Text>
             </View>
@@ -238,19 +240,13 @@ export default function ChildHomeScreen({ navigation }: any) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.ctaButtonText}>📝 השלם משימות עכשיו</Text>
+            <Text style={styles.ctaButtonText}>{t.childHome.tasksBtn}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.encouragement}>
-        <Text style={styles.encouragementText}>
-          💡 כל משימה שתשלים מקרבת אותך לחופש!
-        </Text>
-      </View>
-
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Ventra Software Systems LTD</Text>
+        <Text style={styles.footerText}>{t.childHome.footer}</Text>
       </View>
     </ScrollView>
   );
@@ -487,7 +483,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: '#2C3E50',
-    textAlign: 'right',
     marginBottom: 12,
   },
   taskCard: {
@@ -517,13 +512,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2C3E50',
-    textAlign: 'right',
     marginBottom: 3,
   },
   taskStatus: {
     fontSize: 13,
     fontWeight: '600',
-    textAlign: 'right',
   },
   taskArrow: {
     color: '#BDC3C7',
@@ -551,19 +544,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  encouragement: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: '#E8F8F0',
-    borderRadius: 14,
-  },
-  encouragementText: {
-    fontSize: 15,
-    color: '#27AE60',
-    textAlign: 'center',
-    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',

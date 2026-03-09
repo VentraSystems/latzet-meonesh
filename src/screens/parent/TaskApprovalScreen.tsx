@@ -15,6 +15,7 @@ import { notifyTaskApproved, notifyTaskRejected } from '../../utils/notification
 import { showAlert } from '../../utils/alert';
 import { awardPointsAndBadges, incrementCompletedPunishments, BADGES, POINTS_PER_TASK } from '../../utils/badges';
 import RejectTaskModal from '../../components/RejectTaskModal';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function TaskApprovalScreen({ route, navigation }: any) {
   const { punishmentId } = route.params;
@@ -22,6 +23,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const { t, isRTL } = useLanguage();
 
   useEffect(() => { loadPunishment(); }, []);
 
@@ -32,7 +34,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
         setPunishment({ id: punishmentDoc.id, ...punishmentDoc.data() });
       }
     } catch (error) {
-      showAlert('שגיאה', 'לא הצלחנו לטעון את המשימות');
+      showAlert(t.common.error, t.taskApproval.errorLoad);
     } finally {
       setLoading(false);
     }
@@ -40,12 +42,12 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
 
   const handleApprove = async (taskId: string) => {
     showAlert(
-      'אישור משימה',
-      'האם אתה בטוח שברצונך לאשר את המשימה?',
+      t.taskApproval.confirmApproveTitle,
+      t.taskApproval.confirmApproveMsg,
       [
-        { text: 'ביטול', style: 'cancel' },
+        { text: t.taskApproval.cancelBtn, style: 'cancel' },
         {
-          text: 'אשר ✅',
+          text: t.taskApproval.approveBtn,
           onPress: async () => {
             try {
               const task = punishment.tasks.find((t: any) => t.id === taskId);
@@ -72,26 +74,26 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
                 });
                 await incrementCompletedPunishments(punishment.childId);
 
-                const pointsMsg = result ? `\n+${result.pointsEarned} נקודות לילד!` : '';
+                const pointsMsg = result ? `\n${t.taskApproval.pointsEarned.replace('{n}', String(result.pointsEarned))}` : '';
                 const badgesMsg = result?.newBadges?.length
-                  ? `\n🏆 תגים חדשים: ${result.newBadges.map((b: string) => BADGES[b]?.emoji + BADGES[b]?.name).join(', ')}`
+                  ? `\n${t.taskApproval.newBadge.replace('{name}', BADGES[result.newBadges[0]]?.name)}`
                   : '';
 
-                showAlert('🎉 כל המשימות אושרו!', `הילד יצא מהעונש!${pointsMsg}${badgesMsg}`, [
-                  { text: 'אישור', onPress: () => navigation.goBack() },
+                showAlert(t.taskApproval.allApprovedTitle, `${t.taskApproval.allApprovedMsg}${pointsMsg}${badgesMsg}`, [
+                  { text: t.common.ok, onPress: () => navigation.goBack() },
                 ]);
               } else {
-                const pointsMsg = result ? `+${result.pointsEarned} נקודות לילד!` : '';
+                const pointsMsg = result ? `${t.taskApproval.pointsEarned.replace('{n}', String(result.pointsEarned))}` : '';
                 const badgesMsg = result?.newBadges?.length
-                  ? ` 🏆 תג חדש: ${BADGES[result.newBadges[0]]?.name}!`
+                  ? ` ${t.taskApproval.newBadge.replace('{name}', BADGES[result.newBadges[0]]?.name)}`
                   : '';
                 if (pointsMsg || badgesMsg) {
-                  showAlert('אושר! ⭐', `${pointsMsg}${badgesMsg}`);
+                  showAlert(t.taskApproval.approvedTitle, `${pointsMsg}${badgesMsg}`);
                 }
                 await loadPunishment();
               }
             } catch (error) {
-              showAlert('שגיאה', 'לא הצלחנו לאשר את המשימה');
+              showAlert(t.common.error, t.taskApproval.errorApprove);
             }
           },
         },
@@ -116,7 +118,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
       await notifyTaskRejected(punishment.childId, task.title, rejectionReason, punishmentId, selectedTaskId);
       await loadPunishment();
     } catch (error) {
-      showAlert('שגיאה', 'לא הצלחנו לדחות את המשימה');
+      showAlert(t.common.error, t.taskApproval.errorReject);
     } finally {
       setShowRejectModal(false);
       setSelectedTaskId(null);
@@ -137,11 +139,11 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
     return (
       <View style={styles.emptyState}>
         <Text style={styles.emptyEmoji}>✨</Text>
-        <Text style={styles.emptyTitle}>אין משימות לאישור</Text>
-        <Text style={styles.emptyText}>כל המשימות אושרו או ממתינות להגשה</Text>
+        <Text style={styles.emptyTitle}>{t.taskApproval.empty}</Text>
+        <Text style={styles.emptyText}>{t.taskApproval.emptyDesc}</Text>
         <TouchableOpacity style={styles.backButtonWrapper} onPress={() => navigation.goBack()}>
           <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.backButton}>
-            <Text style={styles.backButtonText}>חזור</Text>
+            <Text style={styles.backButtonText}>{t.taskApproval.back}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -151,7 +153,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.titleSection}>
-        <Text style={styles.title}>אישור משימות</Text>
+        <Text style={styles.title}>{t.taskApproval.title}</Text>
         <View style={styles.countBadge}>
           <Text style={styles.countBadgeText}>{pendingTasks.length}</Text>
         </View>
@@ -179,15 +181,15 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
             {/* Child Note */}
             {task.childNote && (
               <View style={styles.noteContainer}>
-                <Text style={styles.noteLabel}>💬 הערת הילד:</Text>
-                <Text style={styles.noteText}>{task.childNote}</Text>
+                <Text style={[styles.noteLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.taskApproval.childNote}</Text>
+                <Text style={[styles.noteText, { textAlign: isRTL ? 'right' : 'left' }]}>{task.childNote}</Text>
               </View>
             )}
 
             {/* Photo Proof */}
             {task.photoUrl && (
               <View style={styles.photoContainer}>
-                <Text style={styles.photoLabel}>📸 תמונת הוכחה:</Text>
+                <Text style={[styles.photoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.taskApproval.photoProof}</Text>
                 <Image
                   source={{ uri: task.photoUrl }}
                   style={styles.photo}
@@ -199,7 +201,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
             {/* Quiz Score */}
             {task.quizScore !== undefined && (
               <View style={[styles.quizScore, { backgroundColor: task.quizScore >= 60 ? '#E8F8F0' : '#FFF0F0' }]}>
-                <Text style={styles.quizScoreLabel}>ציון בחידון:</Text>
+                <Text style={styles.quizScoreLabel}>{t.taskApproval.quizScore}</Text>
                 <Text style={[styles.quizScoreText, { color: task.quizScore >= 60 ? '#27AE60' : '#E74C3C' }]}>
                   {task.quizScore}% {task.quizScore >= 60 ? '✅' : '❌'}
                 </Text>
@@ -214,7 +216,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
                 activeOpacity={0.85}
               >
                 <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.actionBtn}>
-                  <Text style={styles.actionBtnText}>✅ אשר</Text>
+                  <Text style={styles.actionBtnText}>{t.taskApproval.approve}</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -224,7 +226,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
                 activeOpacity={0.85}
               >
                 <LinearGradient colors={['#E74C3C', '#C0392B']} style={styles.actionBtn}>
-                  <Text style={styles.actionBtnText}>❌ דחה</Text>
+                  <Text style={styles.actionBtnText}>{t.taskApproval.reject}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

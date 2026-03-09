@@ -4,9 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function ParentAnalyticsScreen() {
   const { user, linkedUserId } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState<any>(null);
   const [childName, setChildName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,7 @@ export default function ParentAnalyticsScreen() {
       <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>📊</Text>
-          <Text style={styles.emptyText}>חבר ילד כדי לראות נתונים</Text>
+          <Text style={styles.emptyText}>{t.analytics.noData}</Text>
         </View>
       </LinearGradient>
     );
@@ -115,26 +117,26 @@ export default function ParentAnalyticsScreen() {
     <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.header}>📊 דוח על {childName}</Text>
+        <Text style={styles.header}>📊 {t.analytics.title.replace('{name}', childName)}</Text>
 
         {/* Big Summary Cards */}
         <View style={styles.summaryRow}>
           <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.summaryCard}>
             <Text style={styles.summaryNum}>{stats.totalPunishments}</Text>
-            <Text style={styles.summaryLabel}>עונשים סה"כ</Text>
+            <Text style={styles.summaryLabel}>{t.analytics.totalPunishments}</Text>
           </LinearGradient>
           <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.summaryCard}>
             <Text style={styles.summaryNum}>{stats.completedPunishments}</Text>
-            <Text style={styles.summaryLabel}>עונשים שהסתיימו</Text>
+            <Text style={styles.summaryLabel}>{t.analytics.completedPunishments}</Text>
           </LinearGradient>
         </View>
 
         {/* Completion Rate */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>אחוז השלמת משימות</Text>
+          <Text style={styles.cardTitle}>{t.analytics.completionRate}</Text>
           <View style={styles.bigStatRow}>
             <Text style={styles.bigStat}>{stats.completionRate}%</Text>
-            <Text style={styles.bigStatSub}>{stats.approvedTasks} / {stats.totalTasks} משימות</Text>
+            <Text style={styles.bigStatSub}>{stats.approvedTasks} / {stats.totalTasks} {t.analytics.tasks}</Text>
           </View>
           <View style={styles.progressBg}>
             <LinearGradient
@@ -148,43 +150,43 @@ export default function ParentAnalyticsScreen() {
 
         {/* Quiz Performance */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>ביצועים בחידונים 🧠</Text>
+          <Text style={styles.cardTitle}>{t.analytics.quizPerformance}</Text>
           <View style={styles.quizStats}>
             <View style={styles.quizStat}>
               <Text style={[styles.quizStatNum, { color: getScoreColor(stats.avgQuizScore) }]}>
                 {stats.avgQuizScore}%
               </Text>
-              <Text style={styles.quizStatLabel}>ממוצע ציון</Text>
+              <Text style={styles.quizStatLabel}>{t.analytics.avgScore}</Text>
             </View>
             <View style={styles.quizStat}>
               <Text style={styles.quizStatNum}>{stats.quizTasks}</Text>
-              <Text style={styles.quizStatLabel}>חידונים</Text>
+              <Text style={styles.quizStatLabel}>{t.analytics.quizzes}</Text>
             </View>
             <View style={styles.quizStat}>
               <Text style={[styles.quizStatNum, { color: '#27AE60' }]}>{stats.quizPassed}</Text>
-              <Text style={styles.quizStatLabel}>עברו</Text>
+              <Text style={styles.quizStatLabel}>{t.analytics.passed}</Text>
             </View>
           </View>
         </View>
 
         {/* Task Type Breakdown */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>פירוט סוגי משימות</Text>
+          <Text style={styles.cardTitle}>{t.analytics.taskBreakdown}</Text>
           <View style={styles.typeRow}>
             <View style={styles.typeItem}>
               <Text style={styles.typeEmoji}>🏠</Text>
               <Text style={styles.typeNum}>{stats.choreTasks}</Text>
-              <Text style={styles.typeLabel}>ניקיון</Text>
+              <Text style={styles.typeLabel}>{t.analytics.chores}</Text>
             </View>
             <View style={styles.typeItem}>
               <Text style={styles.typeEmoji}>📚</Text>
               <Text style={styles.typeNum}>{stats.homeworkTasks}</Text>
-              <Text style={styles.typeLabel}>שיעורי בית</Text>
+              <Text style={styles.typeLabel}>{t.analytics.homework}</Text>
             </View>
             <View style={styles.typeItem}>
               <Text style={styles.typeEmoji}>🧠</Text>
               <Text style={styles.typeNum}>{stats.quizTasks}</Text>
-              <Text style={styles.typeLabel}>חידונים</Text>
+              <Text style={styles.typeLabel}>{t.analytics.quizzes}</Text>
             </View>
           </View>
         </View>
@@ -192,7 +194,7 @@ export default function ParentAnalyticsScreen() {
         {/* Recent Quiz Scores */}
         {stats.recentQuizzes.length > 0 && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>ציוני חידונים אחרונים</Text>
+            <Text style={styles.cardTitle}>{t.analytics.recentScores}</Text>
             {stats.recentQuizzes.map((quiz: any, i: number) => (
               <View key={i} style={styles.quizRow}>
                 <View style={[styles.scoreBadge, { backgroundColor: getScoreColor(quiz.score) + '22' }]}>
@@ -212,10 +214,10 @@ export default function ParentAnalyticsScreen() {
             <Text style={styles.insightEmoji}>💡</Text>
             <Text style={styles.insightText}>
               {stats.avgQuizScore >= 80
-                ? `${childName} מצטיין! ממוצע חידונים גבוה מאוד 🌟`
+                ? t.analytics.insightGreat.replace('{name}', childName)
                 : stats.avgQuizScore >= 60
-                ? `${childName} בדרך הנכונה! המשך לחזק את הלמידה 💪`
-                : `${childName} זקוק לחיזוק. נסה חידונים קלים יותר 📖`}
+                ? t.analytics.insightGood.replace('{name}', childName)
+                : t.analytics.insightNeedsHelp.replace('{name}', childName)}
             </Text>
           </View>
         )}

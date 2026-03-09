@@ -13,23 +13,25 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signInWithGoogle } = useAuth();
+  const { t, isRTL } = useLanguage();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      showAlert('שגיאה', 'נא למלא את כל השדות');
+      showAlert(t.common.error, t.login.errorFill);
       return;
     }
     setLoading(true);
     try {
       await signIn(email, password);
     } catch (error: any) {
-      showAlert('שגיאת התחברות', error.message);
+      showAlert(t.login.errorLogin, error.message);
     } finally {
       setLoading(false);
     }
@@ -39,7 +41,7 @@ export default function LoginScreen({ navigation }: any) {
     try {
       await signInWithGoogle();
     } catch (error: any) {
-      showAlert('שגיאה', error.message);
+      showAlert(t.common.error, error.message);
     }
   };
 
@@ -52,30 +54,30 @@ export default function LoginScreen({ navigation }: any) {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
             <Text style={styles.logo}>🚪</Text>
-            <Text style={styles.appName}>לצאת מעונש</Text>
-            <Text style={styles.tagline}>התחבר להמשיך</Text>
+            <Text style={styles.appName}>{t.appName}</Text>
+            <Text style={styles.tagline}>{t.login.tagline}</Text>
           </View>
 
           <View style={styles.card}>
             <TextInput
               style={styles.input}
-              placeholder="אימייל"
+              placeholder={t.login.email}
               placeholderTextColor="#9BA5B4"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              textAlign="right"
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
             <TextInput
               style={styles.input}
-              placeholder="סיסמה"
+              placeholder={t.login.password}
               placeholderTextColor="#9BA5B4"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              textAlign="right"
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
             <TouchableOpacity
@@ -93,14 +95,14 @@ export default function LoginScreen({ navigation }: any) {
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.loginButtonText}>התחבר</Text>
+                  <Text style={styles.loginButtonText}>{t.login.loginBtn}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>או</Text>
+              <Text style={styles.dividerText}>{t.common.or}</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -108,20 +110,20 @@ export default function LoginScreen({ navigation }: any) {
               <View style={styles.googleLogo}>
                 <Text style={styles.googleLogoText}>G</Text>
               </View>
-              <Text style={styles.googleButtonText}>התחבר עם Google</Text>
+              <Text style={styles.googleButtonText}>{t.login.googleBtn}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.signupLink} onPress={() => navigation.navigate('SignUp')}>
               <Text style={styles.signupLinkText}>
-                אין לך חשבון? <Text style={styles.signupLinkBold}>הירשם כאן</Text>
+                {t.login.noAccount} <Text style={styles.signupLinkBold}>{t.login.signupLink}</Text>
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.childBox}>
             <Text style={styles.childBoxIcon}>⚡</Text>
-            <Text style={styles.childBoxTitle}>ילד? כניסה מהירה!</Text>
-            <Text style={styles.childBoxDesc}>יש לך קוד מההורה שלך?</Text>
+            <Text style={styles.childBoxTitle}>{t.login.childTitle}</Text>
+            <Text style={styles.childBoxDesc}>{t.login.childDesc}</Text>
             <TouchableOpacity
               style={styles.childButton}
               onPress={() => navigation.navigate('ChildOnboarding')}
@@ -133,7 +135,7 @@ export default function LoginScreen({ navigation }: any) {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.childButtonText}>כניסת ילד עם קוד ⚡</Text>
+                <Text style={styles.childButtonText}>{t.login.childBtn}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

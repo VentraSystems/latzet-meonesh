@@ -4,12 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function ParentHomeScreen({ navigation }: any) {
   const { user, linkedUserId, logout } = useAuth();
   const [childName, setChildName] = useState('');
   const [activePunishment, setActivePunishment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { t, isRTL } = useLanguage();
 
   useEffect(() => {
     if (!linkedUserId) {
@@ -61,21 +63,19 @@ export default function ParentHomeScreen({ navigation }: any) {
       <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.fullScreen}>
         <View style={styles.noChildContainer}>
           <Text style={styles.noChildEmoji}>👶</Text>
-          <Text style={styles.noChildTitle}>לא מחובר לילד</Text>
-          <Text style={styles.noChildText}>
-            כדי להתחיל, חבר את הילד שלך לחשבון
-          </Text>
+          <Text style={styles.noChildTitle}>{t.parentHome.noChild}</Text>
+          <Text style={styles.noChildText}>{t.parentHome.noChildDesc}</Text>
           <TouchableOpacity
             style={styles.primaryButtonWrapper}
             onPress={() => navigation.navigate('LinkChild')}
             activeOpacity={0.85}
           >
             <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.primaryButtonText}>חבר ילד עכשיו</Text>
+              <Text style={styles.primaryButtonText}>{t.parentHome.connectChild}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.logoutBtnText}>התנתק</Text>
+            <Text style={styles.logoutBtnText}>{t.common.logout}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -90,9 +90,9 @@ export default function ParentHomeScreen({ navigation }: any) {
           <Text style={styles.settingsIcon}>⚙️</Text>
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerGreeting}>שלום הורה 👋</Text>
+          <Text style={styles.headerGreeting}>{t.parentHome.greeting}</Text>
           <Text style={styles.childNameText}>
-            {childName ? `ילד: ${childName}` : 'טוען...'}
+            {childName ? `${t.parentHome.child}: ${childName}` : t.parentHome.loading}
           </Text>
         </View>
       </LinearGradient>
@@ -102,28 +102,28 @@ export default function ParentHomeScreen({ navigation }: any) {
         <View style={styles.statusRow}>
           <View style={[styles.statusBadge, isInPunishment ? styles.punishmentBadge : styles.freeBadge]}>
             <Text style={styles.statusBadgeText}>
-              {isInPunishment ? '🔒 בעונש' : '✅ חופשי'}
+              {isInPunishment ? t.parentHome.inPunishment : t.parentHome.free}
             </Text>
           </View>
-          <Text style={styles.statusLabel}>סטטוס ילדך:</Text>
+          <Text style={styles.statusLabel}>{t.parentHome.statusLabel}</Text>
         </View>
 
         {isInPunishment && (
           <>
-            <Text style={styles.punishmentName}>{activePunishment.name}</Text>
+            <Text style={[styles.punishmentName, { textAlign: isRTL ? 'right' : 'left' }]}>{activePunishment.name}</Text>
 
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text style={styles.statNumber}>{completedTasks}</Text>
-                <Text style={styles.statLabel}>הושלמו</Text>
+                <Text style={styles.statLabel}>{t.parentHome.completed}</Text>
               </View>
               <View style={[styles.statBox, styles.statBoxMiddle]}>
                 <Text style={styles.statNumber}>{totalTasks}</Text>
-                <Text style={styles.statLabel}>סה"כ</Text>
+                <Text style={styles.statLabel}>{t.parentHome.total}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text style={[styles.statNumber, pendingTasks > 0 && styles.statNumberWarning]}>{pendingTasks}</Text>
-                <Text style={styles.statLabel}>ממתינות</Text>
+                <Text style={styles.statLabel}>{t.parentHome.pending}</Text>
               </View>
             </View>
 
@@ -135,12 +135,14 @@ export default function ParentHomeScreen({ navigation }: any) {
                 end={{ x: 1, y: 0 }}
               />
             </View>
-            <Text style={styles.progressPct}>{Math.round(progress)}% הושלם</Text>
+            <Text style={[styles.progressPct, { textAlign: isRTL ? 'right' : 'left' }]}>{Math.round(progress)}{t.parentHome.percentCompleted}</Text>
 
             {pendingTasks > 0 && (
               <View style={styles.alertBanner}>
-                <Text style={styles.alertBannerText}>
-                  ⏳ {pendingTasks} {pendingTasks === 1 ? 'משימה ממתינה' : 'משימות ממתינות'} לאישורך
+                <Text style={[styles.alertBannerText, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {pendingTasks === 1
+                    ? t.parentHome.pendingAlert1.replace('{n}', String(pendingTasks))
+                    : t.parentHome.pendingAlertN.replace('{n}', String(pendingTasks))}
                 </Text>
               </View>
             )}
@@ -150,7 +152,7 @@ export default function ParentHomeScreen({ navigation }: any) {
         {!isInPunishment && (
           <View style={styles.freeMsg}>
             <Text style={styles.freeMsgEmoji}>😊</Text>
-            <Text style={styles.freeMsgText}>הילד שלך חופשי כרגע!</Text>
+            <Text style={styles.freeMsgText}>{t.parentHome.freeMsg}</Text>
           </View>
         )}
       </View>
@@ -163,7 +165,7 @@ export default function ParentHomeScreen({ navigation }: any) {
           activeOpacity={0.85}
         >
           <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryButtonText}>➕ הגדר עונש חדש</Text>
+            <Text style={styles.primaryButtonText}>{t.parentHome.newPunishment}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -174,7 +176,7 @@ export default function ParentHomeScreen({ navigation }: any) {
             activeOpacity={0.85}
           >
             <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.primaryButtonText}>✅ אשר משימות ({pendingTasks})</Text>
+              <Text style={styles.primaryButtonText}>{t.parentHome.approveTasks.replace('{n}', String(pendingTasks))}</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -185,7 +187,7 @@ export default function ParentHomeScreen({ navigation }: any) {
           activeOpacity={0.85}
         >
           <LinearGradient colors={['#1a1a2e', '#0f3460']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryButtonText}>📊 דוחות וניתוח</Text>
+            <Text style={styles.primaryButtonText}>{t.parentHome.reports}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -194,12 +196,12 @@ export default function ParentHomeScreen({ navigation }: any) {
           onPress={() => navigation.navigate('Settings')}
           activeOpacity={0.85}
         >
-          <Text style={styles.secondaryButtonText}>⚙️ הגדרות</Text>
+          <Text style={styles.secondaryButtonText}>{t.parentHome.settings}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Made with ❤️ by Ventra Software Systems LTD</Text>
+        <Text style={styles.footerText}>{t.parentHome.footer}</Text>
       </View>
     </ScrollView>
   );
@@ -321,7 +323,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2C3E50',
-    textAlign: 'right',
     marginBottom: 16,
   },
   statsRow: {
@@ -367,7 +368,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#27AE60',
     fontWeight: '600',
-    textAlign: 'right',
   },
   alertBanner: {
     backgroundColor: '#FFF3E0',
@@ -381,7 +381,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#E67E22',
     fontWeight: '600',
-    textAlign: 'right',
   },
   freeMsg: {
     alignItems: 'center',

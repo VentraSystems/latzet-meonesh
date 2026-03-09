@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole } from '../../types';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function SignUpScreen({ navigation }: any) {
   const [name, setName] = useState('');
@@ -24,26 +25,27 @@ export default function SignUpScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
+  const { t, isRTL } = useLanguage();
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword || !role) {
-      showAlert('שגיאה', 'נא למלא את כל השדות');
+      showAlert(t.common.error, t.signup.errorFill);
       return;
     }
     if (password !== confirmPassword) {
-      showAlert('שגיאה', 'הסיסמאות אינן תואמות');
+      showAlert(t.common.error, t.signup.errorPasswordMatch);
       return;
     }
     if (password.length < 6) {
-      showAlert('שגיאה', 'הסיסמה חייבת להכיל לפחות 6 תווים');
+      showAlert(t.common.error, t.signup.errorPasswordShort);
       return;
     }
     setLoading(true);
     try {
       await signUp(email, password, name, role);
-      showAlert('הצלחה!', 'החשבון נוצר בהצלחה');
+      showAlert(t.common.success, t.signup.success);
     } catch (error: any) {
-      showAlert('שגיאת הרשמה', error.message);
+      showAlert(t.common.error, error.message);
     } finally {
       setLoading(false);
     }
@@ -54,7 +56,7 @@ export default function SignUpScreen({ navigation }: any) {
     try {
       await signInWithGoogle();
     } catch (error: any) {
-      showAlert('שגיאת התחברות', error.message || 'התחברות עם Google נכשלה');
+      showAlert(t.common.error, error.message || t.signup.errorFill);
     } finally {
       setGoogleLoading(false);
     }
@@ -66,13 +68,13 @@ export default function SignUpScreen({ navigation }: any) {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
             <Text style={styles.logo}>✨</Text>
-            <Text style={styles.appName}>לצאת מעונש</Text>
-            <Text style={styles.tagline}>יצירת חשבון חדש</Text>
+            <Text style={styles.appName}>{t.appName}</Text>
+            <Text style={styles.tagline}>{t.signup.tagline}</Text>
           </View>
 
           {/* Role Selection */}
           <View style={styles.roleSection}>
-            <Text style={styles.roleTitle}>בחר את התפקיד שלך:</Text>
+            <Text style={styles.roleTitle}>{t.signup.selectRole}</Text>
             <View style={styles.roleRow}>
               <TouchableOpacity
                 style={[styles.roleCard, role === 'parent' && styles.roleCardActive]}
@@ -82,12 +84,12 @@ export default function SignUpScreen({ navigation }: any) {
                 {role === 'parent' ? (
                   <LinearGradient colors={['#4776E6', '#8E54E9']} style={styles.roleCardGradient}>
                     <Text style={styles.roleEmoji}>👨‍👩‍👧‍👦</Text>
-                    <Text style={styles.roleLabel}>הורה</Text>
+                    <Text style={styles.roleLabel}>{t.roles.parent}</Text>
                   </LinearGradient>
                 ) : (
                   <View style={styles.roleCardInner}>
                     <Text style={styles.roleEmoji}>👨‍👩‍👧‍👦</Text>
-                    <Text style={styles.roleLabelDim}>הורה</Text>
+                    <Text style={styles.roleLabelDim}>{t.roles.parent}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -100,12 +102,12 @@ export default function SignUpScreen({ navigation }: any) {
                 {role === 'child' ? (
                   <LinearGradient colors={['#f7971e', '#ffd200']} style={styles.roleCardGradient}>
                     <Text style={styles.roleEmoji}>⭐</Text>
-                    <Text style={styles.roleLabelDark}>ילד</Text>
+                    <Text style={styles.roleLabelDark}>{t.roles.child}</Text>
                   </LinearGradient>
                 ) : (
                   <View style={styles.roleCardInner}>
                     <Text style={styles.roleEmoji}>⭐</Text>
-                    <Text style={styles.roleLabelDim}>ילד</Text>
+                    <Text style={styles.roleLabelDim}>{t.roles.child}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -116,50 +118,50 @@ export default function SignUpScreen({ navigation }: any) {
           <View style={styles.card}>
             <TextInput
               style={styles.input}
-              placeholder="שם מלא"
+              placeholder={t.signup.fullName}
               placeholderTextColor="#9BA5B4"
               value={name}
               onChangeText={setName}
-              textAlign="right"
+              textAlign={isRTL ? 'right' : 'left'}
             />
             <TextInput
               style={styles.input}
-              placeholder="אימייל"
+              placeholder={t.signup.email}
               placeholderTextColor="#9BA5B4"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              textAlign="right"
+              textAlign={isRTL ? 'right' : 'left'}
             />
             <TextInput
               style={styles.input}
-              placeholder="סיסמה"
+              placeholder={t.signup.password}
               placeholderTextColor="#9BA5B4"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              textAlign="right"
+              textAlign={isRTL ? 'right' : 'left'}
             />
             <TextInput
               style={styles.input}
-              placeholder="אימות סיסמה"
+              placeholder={t.signup.confirmPassword}
               placeholderTextColor="#9BA5B4"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
-              textAlign="right"
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
             <TouchableOpacity style={styles.signupButtonWrapper} onPress={handleSignUp} disabled={loading} activeOpacity={0.85}>
               <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.signupButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.signupButtonText}>הירשם עכשיו</Text>}
+                {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.signupButtonText}>{t.signup.signupBtn}</Text>}
               </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>או</Text>
+              <Text style={styles.dividerText}>{t.common.or}</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -171,14 +173,14 @@ export default function SignUpScreen({ navigation }: any) {
                   <View style={styles.googleLogo}>
                     <Text style={styles.googleLogoText}>G</Text>
                   </View>
-                  <Text style={styles.googleButtonText}>הירשם עם Google</Text>
+                  <Text style={styles.googleButtonText}>{t.signup.googleBtn}</Text>
                 </>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
               <Text style={styles.loginLinkText}>
-                כבר יש לך חשבון? <Text style={styles.loginLinkBold}>התחבר כאן</Text>
+                {t.signup.hasAccount} <Text style={styles.loginLinkBold}>{t.signup.loginLink}</Text>
               </Text>
             </TouchableOpacity>
           </View>

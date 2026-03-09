@@ -15,9 +15,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { taskPresets } from '../../data/taskPresets';
 import { notifyNewPunishment } from '../../utils/notifications';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-const AI_QUIZ_URL = 'https://meonesh.ventrasystems.com/api/generate-quiz';
-const AI_SUGGEST_URL = 'https://meonesh.ventrasystems.com/api/suggest-tasks';
+const AI_QUIZ_URL = 'https://escapechallenge.ventrasystems.com/api/generate-quiz';
+const AI_SUGGEST_URL = 'https://escapechallenge.ventrasystems.com/api/suggest-tasks';
 
 const AI_SUBJECTS = [
   { id: 'math',      label: 'מתמטיקה',   icon: '🔢', color: '#E74C3C' },
@@ -69,6 +70,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
   const [tempGrade, setTempGrade] = useState(4);
 
   const { user, linkedUserId } = useAuth();
+  const { t, isRTL } = useLanguage();
 
   useEffect(() => {
     if (!linkedUserId) return;
@@ -95,7 +97,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
       if (!data.success || !data.tasks) throw new Error('שגיאה בקבלת הצעות');
       setAiSuggestions(data.tasks.map((t: any, i: number) => ({ ...t, _id: `ai-suggest-${Date.now()}-${i}` })));
     } catch {
-      showAlert('שגיאה', 'לא הצלחנו לקבל הצעות AI. נסה שוב.');
+      showAlert(t.common.error, t.setPunishment.errorSuggest);
     } finally {
       setLoadingSuggestions(false);
     }
@@ -156,15 +158,15 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
   const createPunishment = async () => {
     if (!punishmentName.trim()) {
-      showAlert('שגיאה', 'נא להזין שם לעונש');
+      showAlert(t.common.error, t.setPunishment.errorName);
       return;
     }
     if (totalCount === 0) {
-      showAlert('שגיאה', 'נא לבחור לפחות משימה אחת');
+      showAlert(t.common.error, t.setPunishment.errorNoTasks);
       return;
     }
     if (!linkedUserId) {
-      showAlert('שגיאה', 'לא מחובר לילד. נא לחבר ילד תחילה');
+      showAlert(t.common.error, t.setPunishment.errorNoChild);
       return;
     }
 
@@ -264,11 +266,11 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
       await notifyNewPunishment(linkedUserId, punishmentName, allTasks.length, punishmentRef.id);
 
-      showAlert('הצלחה! 🎉', `העונש נוצר עם ${allTasks.length} משימות`, [
-        { text: 'אישור', onPress: () => navigation.goBack() },
+      showAlert(t.setPunishment.successTitle, t.setPunishment.successMsg.replace('{n}', String(allTasks.length)), [
+        { text: t.common.ok, onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      showAlert('שגיאה', error.message || 'לא הצלחנו ליצור את העונש');
+      showAlert(t.common.error, error.message || t.setPunishment.errorNoTasks);
     } finally {
       setLoading(false);
       setLoadingMsg('');
@@ -280,30 +282,30 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>הגדר עונש חדש</Text>
+      <Text style={styles.title}>{t.setPunishment.title}</Text>
 
       {/* Punishment name */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📝 שם העונש</Text>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.punishmentName}</Text>
         <TextInput
           style={styles.input}
-          placeholder='למשל: "אין טלפון לשעתיים"'
+          placeholder={t.setPunishment.namePlaceholder}
           value={punishmentName}
           onChangeText={setPunishmentName}
-          textAlign="right"
+          textAlign={isRTL ? 'right' : 'left'}
         />
       </View>
 
       {/* Summary badge */}
       {totalCount > 0 && (
         <View style={styles.summaryBadge}>
-          <Text style={styles.summaryText}>✅ {totalCount} משימות נבחרו</Text>
+          <Text style={styles.summaryText}>{t.setPunishment.selectedCount.replace('{n}', String(totalCount))}</Text>
         </View>
       )}
 
       {/* Chores */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🏠 עבודות בית</Text>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.chores}</Text>
         <View style={styles.taskGrid}>
           {choreTasks.map((task) => {
             const selected = selectedTasks.includes(task.id);
@@ -326,7 +328,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
       {/* Behavior */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🤝 התנהגות</Text>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.behavior}</Text>
         <View style={styles.taskGrid}>
           {behaviorTasks.map((task) => {
             const selected = selectedTasks.includes(task.id);
@@ -349,8 +351,8 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
       {/* AI Learning Quizzes */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🤖 חידוני למידה — נוצרים ע"י AI</Text>
-        <Text style={styles.sectionHint}>לחץ על נושא להגדרת חידון ייחודי. ניתן להוסיף מספר נושאים!</Text>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.aiQuizzes}</Text>
+        <Text style={[styles.sectionHint, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.aiHint}</Text>
 
         <View style={styles.subjectGrid}>
           {AI_SUBJECTS.map((subject) => {
@@ -386,7 +388,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                   <View style={[styles.configPanel, { borderColor: subject.color }]}>
                     <Text style={styles.configTitle}>הגדרות חידון {subject.icon} {subject.label}</Text>
 
-                    <Text style={styles.configLabel}>רמת קושי:</Text>
+                    <Text style={[styles.configLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.diffLabel}</Text>
                     <View style={styles.pillRow}>
                       {DIFFICULTIES.map((d) => (
                         <TouchableOpacity
@@ -401,7 +403,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                       ))}
                     </View>
 
-                    <Text style={styles.configLabel}>כיתה:</Text>
+                    <Text style={[styles.configLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.gradeLabel}</Text>
                     <View style={styles.pillRow}>
                       {GRADES.map((g, i) => (
                         <TouchableOpacity
@@ -419,7 +421,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                       onPress={() => confirmAddQuiz(subject.id)}
                     >
                       <Text style={styles.confirmButtonText}>
-                        {isAdded ? '✅ עדכן חידון' : `✨ הוסף חידון ${subject.label}`}
+                        {isAdded ? t.setPunishment.updateQuiz : t.setPunishment.addQuiz.replace('{subject}', subject.label)}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -441,18 +443,18 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
       {/* AI Task Suggestions */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🎲 הפתיעו אותי — AI מציע משימות</Text>
-        <Text style={styles.sectionHint}>AI יציע 6 משימות מותאמות אישית לגיל ולכיתה של הילד</Text>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.surpriseTitle}</Text>
+        <Text style={[styles.sectionHint, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.surpriseHint}</Text>
 
         <TouchableOpacity onPress={fetchAiSuggestions} disabled={loadingSuggestions} style={styles.surpriseButtonWrap}>
           <LinearGradient colors={['#8E54E9', '#4776E6']} style={styles.surpriseButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             {loadingSuggestions ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator color="#FFFFFF" />
-                <Text style={styles.surpriseButtonText}>מייצר הצעות...</Text>
+                <Text style={styles.surpriseButtonText}>{t.setPunishment.generating}</Text>
               </View>
             ) : (
-              <Text style={styles.surpriseButtonText}>🎲 הפתיעו אותי!</Text>
+              <Text style={styles.surpriseButtonText}>{t.setPunishment.surpriseBtn}</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -483,17 +485,17 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
       {/* Custom task */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>✏️ משימה מותאמת אישית</Text>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.customTask}</Text>
         <View style={styles.customTaskRow}>
           <TouchableOpacity style={styles.addButton} onPress={addCustomTask}>
-            <Text style={styles.addButtonText}>+ הוסף</Text>
+            <Text style={styles.addButtonText}>{t.setPunishment.addCustom}</Text>
           </TouchableOpacity>
           <TextInput
             style={styles.customInput}
-            placeholder="כתוב משימה..."
+            placeholder={t.setPunishment.customPlaceholder}
             value={customTask}
             onChangeText={setCustomTask}
-            textAlign="right"
+            textAlign={isRTL ? 'right' : 'left'}
           />
         </View>
         {selectedTasks.filter((id) => id.startsWith('custom-')).map((id) => (
@@ -515,17 +517,17 @@ export default function SetPunishmentScreen({ navigation }: any) {
         {loading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color="#FFFFFF" />
-            <Text style={styles.loadingText}>{loadingMsg || 'יוצר...'}</Text>
+            <Text style={styles.loadingText}>{loadingMsg || t.setPunishment.creating}</Text>
           </View>
         ) : (
           <Text style={styles.createButtonText}>
-            🚀 צור עונש ושלח לילד ({totalCount} משימות)
+            {t.setPunishment.createBtn.replace('{n}', String(totalCount))}
           </Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.cancelButtonText}>ביטול</Text>
+        <Text style={styles.cancelButtonText}>{t.setPunishment.cancel}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

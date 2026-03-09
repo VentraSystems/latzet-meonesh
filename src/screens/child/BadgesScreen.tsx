@@ -5,9 +5,11 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BADGES } from '../../utils/badges';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function BadgesScreen() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,27 +44,27 @@ export default function BadgesScreen() {
         <LinearGradient colors={['#f7971e', '#ffd200']} style={styles.pointsCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <Text style={styles.pointsEmoji}>⭐</Text>
           <Text style={styles.pointsNumber}>{totalPoints}</Text>
-          <Text style={styles.pointsLabel}>נקודות</Text>
+          <Text style={styles.pointsLabel}>{t.badges.points}</Text>
         </LinearGradient>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{completedTasks}</Text>
-            <Text style={styles.statLabel}>משימות הושלמו</Text>
+            <Text style={styles.statLabel}>{t.badges.tasksCompleted}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{completedQuizzes}</Text>
-            <Text style={styles.statLabel}>חידונים עברו</Text>
+            <Text style={styles.statLabel}>{t.badges.quizzesPassed}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{earnedBadges.length}</Text>
-            <Text style={styles.statLabel}>תגים</Text>
+            <Text style={styles.statLabel}>{t.badges.badgesEarned}</Text>
           </View>
         </View>
 
         {/* Badges Grid */}
-        <Text style={styles.sectionTitle}>התגים שלך</Text>
+        <Text style={styles.sectionTitle}>{t.badges.title}</Text>
         <View style={styles.badgesGrid}>
           {allBadgeKeys.map((key) => {
             const badge = BADGES[key];
@@ -76,7 +78,7 @@ export default function BadgesScreen() {
                   {earned ? badge.name : '???'}
                 </Text>
                 <Text style={[styles.badgeDesc, !earned && styles.badgeDescLocked]}>
-                  {earned ? badge.desc : 'עדיין לא הושג'}
+                  {earned ? badge.desc : t.badges.locked}
                 </Text>
               </View>
             );
@@ -86,7 +88,7 @@ export default function BadgesScreen() {
         {earnedBadges.length === 0 && (
           <View style={styles.emptyMsg}>
             <Text style={styles.emptyMsgText}>
-              השלם משימות ועבור חידונים כדי להרוויח תגים! 🚀
+              {t.badges.emptyMsg}
             </Text>
           </View>
         )}

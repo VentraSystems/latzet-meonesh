@@ -13,9 +13,11 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function SettingsScreen({ navigation }: any) {
   const { user, logout, linkedUserId } = useAuth();
+  const { t, language, setLanguage } = useLanguage();
   const [parentName, setParentName] = useState('');
   const [childName, setChildName] = useState('');
   const [parentEmail, setParentEmail] = useState('');
@@ -55,19 +57,18 @@ export default function SettingsScreen({ navigation }: any) {
 
   const handleLogout = () => {
     showAlert(
-      'התנתקות',
-      'האם אתה בטוח שברצונך להתנתק?',
+      t.settings.logoutConfirmTitle,
+      t.settings.logoutConfirmMsg,
       [
-        { text: 'ביטול', style: 'cancel' },
+        { text: t.settings.cancelBtn, style: 'cancel' },
         {
-          text: 'התנתק',
+          text: t.settings.logoutBtn,
           style: 'destructive',
           onPress: async () => {
             try {
               await logout();
-              // Navigation will be handled automatically by AuthContext
             } catch (error) {
-              showAlert('שגיאה', 'לא הצלחנו להתנתק');
+              showAlert(t.common.error, t.settings.errorLogout);
             }
           },
         },
@@ -77,32 +78,24 @@ export default function SettingsScreen({ navigation }: any) {
 
   const handleUnlinkChild = () => {
     showAlert(
-      'ניתוק ילד',
-      `האם אתה בטוח שברצונך לנתק את ${childName}? תצטרך לחבר אותו שוב עם קוד חדש.`,
+      t.settings.unlinkConfirmTitle,
+      t.settings.unlinkConfirmMsg.replace('{name}', childName),
       [
-        { text: 'ביטול', style: 'cancel' },
+        { text: t.settings.cancelBtn, style: 'cancel' },
         {
-          text: 'נתק',
+          text: t.settings.unlinkBtn,
           style: 'destructive',
           onPress: async () => {
             try {
-              // Unlink from parent
-              await updateDoc(doc(db, 'users', user!.uid), {
-                linkedUserId: null,
-              });
-
-              // Unlink from child
+              await updateDoc(doc(db, 'users', user!.uid), { linkedUserId: null });
               if (linkedUserId) {
-                await updateDoc(doc(db, 'users', linkedUserId), {
-                  linkedUserId: null,
-                });
+                await updateDoc(doc(db, 'users', linkedUserId), { linkedUserId: null });
               }
-
-              showAlert('הצלחה', 'הילד נותק בהצלחה', [
-                { text: 'אישור', onPress: () => navigation.goBack() },
+              showAlert(t.common.success, t.settings.unlinkSuccess, [
+                { text: t.common.ok, onPress: () => navigation.goBack() },
               ]);
             } catch (error) {
-              showAlert('שגיאה', 'לא הצלחנו לנתק את הילד');
+              showAlert(t.common.error, t.settings.errorUnlink);
             }
           },
         },
@@ -111,68 +104,37 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleAbout = () => {
-    showAlert(
-      'אודות האפליקציה',
-      `לצאת מעונש v1.0.0\n\n` +
-      `אפליקציה לניהול עונשים ומשימות בין הורים לילדים.\n\n` +
-      `פותח עם ❤️ באמצעות React Native ו-Firebase.\n\n` +
-      `Developed by Ventra Software Systems LTD\n\n` +
-      `© 2026 כל הזכויות שמורות`,
-      [{ text: 'סגור' }]
-    );
+    showAlert(t.settings.aboutTitle, t.settings.aboutMsg, [{ text: t.settings.closeBtn }]);
   };
 
   const handleHelp = () => {
-    showAlert(
-      'עזרה ותמיכה',
-      `איך משתמשים באפליקציה?\n\n` +
-      `1️⃣ חבר את הילד שלך באמצעות קוד הקישור\n` +
-      `2️⃣ צור עונש חדש ובחר משימות\n` +
-      `3️⃣ אשר את המשימות שהילד מגיש\n` +
-      `4️⃣ הילד משתחרר מהעונש אוטומטית!\n\n` +
-      `צריך עזרה נוספת?\n` +
-      `📧 support@latzet-meonesh.co.il`,
-      [{ text: 'הבנתי' }]
-    );
+    showAlert(t.settings.helpTitle, t.settings.helpMsg, [{ text: t.settings.understoodBtn }]);
   };
 
   const handlePrivacy = () => {
-    showAlert(
-      'מדיניות פרטיות',
-      `אנחנו מכבדים את הפרטיות שלך!\n\n` +
-      `✅ המידע שלך מאובטח ב-Firebase\n` +
-      `✅ לא נשתף את הנתונים שלך עם צד שלישי\n` +
-      `✅ אתה יכול למחוק את החשבון בכל עת\n\n` +
-      `למידע מפורט: privacy@latzet-meonesh.co.il`,
-      [{ text: 'סגור' }]
-    );
+    showAlert(t.settings.privacyTitle, t.settings.privacyMsg, [{ text: t.settings.closeBtn }]);
   };
 
   const handleDeleteAccount = () => {
     showAlert(
-      '⚠️ מחיקת חשבון',
-      'פעולה זו תמחק לצמיתות את החשבון והנתונים שלך. האם אתה בטוח?',
+      t.settings.deleteConfirmTitle,
+      t.settings.deleteConfirmMsg,
       [
-        { text: 'ביטול', style: 'cancel' },
+        { text: t.settings.cancelBtn, style: 'cancel' },
         {
-          text: 'מחק לצמיתות',
+          text: t.settings.deleteForever,
           style: 'destructive',
           onPress: () => {
             showAlert(
-              'אישור סופי',
-              'זו הזדמנות אחרונה! פעולה זו בלתי הפיכה.',
+              t.settings.deleteFinalTitle,
+              t.settings.deleteFinalMsg,
               [
-                { text: 'ביטול', style: 'cancel' },
+                { text: t.settings.cancelBtn, style: 'cancel' },
                 {
-                  text: 'כן, מחק הכל',
+                  text: t.settings.deleteAll,
                   style: 'destructive',
                   onPress: async () => {
-                    // TODO: Implement account deletion
-                    // This would require Cloud Functions to properly delete user data
-                    showAlert(
-                      'בקרוב',
-                      'מחיקת חשבון תהיה זמינה בגרסה הבאה. אנא צור קשר עם התמיכה.'
-                    );
+                    showAlert(t.settings.deleteSoonTitle, t.settings.deleteSoonMsg);
                   },
                 },
               ]
@@ -195,7 +157,7 @@ export default function SettingsScreen({ navigation }: any) {
     <ScrollView style={styles.container}>
       {/* Profile Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>👤 פרופיל</Text>
+        <Text style={styles.sectionTitle}>{t.settings.profile}</Text>
 
         <View style={styles.card}>
           <View style={styles.profileHeader}>
@@ -208,49 +170,69 @@ export default function SettingsScreen({ navigation }: any) {
               <Text style={styles.profileName}>{parentName}</Text>
               <Text style={styles.profileEmail}>{parentEmail}</Text>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>הורה</Text>
+                <Text style={styles.badgeText}>{t.settings.parentBadge}</Text>
               </View>
             </View>
           </View>
 
           {linkedUserId && childName && (
             <View style={styles.childInfo}>
-              <Text style={styles.childLabel}>ילד מחובר:</Text>
+              <Text style={styles.childLabel}>{t.settings.connectedChild}</Text>
               <Text style={styles.childName}>{childName}</Text>
               <TouchableOpacity
                 style={styles.unlinkButton}
                 onPress={handleUnlinkChild}
               >
-                <Text style={styles.unlinkButtonText}>נתק ילד</Text>
+                <Text style={styles.unlinkButtonText}>{t.settings.unlinkChild}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {!linkedUserId && (
             <View style={styles.noChildInfo}>
-              <Text style={styles.noChildText}>אין ילד מחובר</Text>
+              <Text style={styles.noChildText}>{t.settings.noChild}</Text>
               <TouchableOpacity
                 style={styles.linkButton}
                 onPress={() => navigation.navigate('LinkChild')}
               >
-                <Text style={styles.linkButtonText}>חבר ילד</Text>
+                <Text style={styles.linkButtonText}>{t.settings.linkChild}</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
       </View>
 
+      {/* Language Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t.settings.language}</Text>
+        <View style={styles.card}>
+          <Text style={styles.settingTitle}>{t.settings.languageTitle}</Text>
+          <View style={[styles.settingRow, { marginTop: 12 }]}>
+            <TouchableOpacity
+              style={[styles.langBtn, language === 'en' && styles.langBtnActive]}
+              onPress={() => setLanguage('en')}
+            >
+              <Text style={[styles.langBtnText, language === 'en' && styles.langBtnTextActive]}>🇺🇸 English</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langBtn, language === 'he' && styles.langBtnActive]}
+              onPress={() => setLanguage('he')}
+            >
+              <Text style={[styles.langBtnText, language === 'he' && styles.langBtnTextActive]}>🇮🇱 עברית</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
       {/* Notifications Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🔔 התראות</Text>
+        <Text style={styles.sectionTitle}>{t.settings.notifications}</Text>
 
         <View style={styles.card}>
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>התראות דחיפה</Text>
-              <Text style={styles.settingDescription}>
-                קבל התראות כשהילד מגיש משימות
-              </Text>
+              <Text style={styles.settingTitle}>{t.settings.pushNotifications}</Text>
+              <Text style={styles.settingDescription}>{t.settings.pushDesc}</Text>
             </View>
             <Switch
               value={notificationsEnabled}
@@ -260,20 +242,18 @@ export default function SettingsScreen({ navigation }: any) {
             />
           </View>
 
-          <Text style={styles.notificationNote}>
-            💡 התראות עוזרות לך להישאר מעודכן בפעילות הילד
-          </Text>
+          <Text style={styles.notificationNote}>{t.settings.notificationNote}</Text>
         </View>
       </View>
 
       {/* App Settings Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚙️ הגדרות אפליקציה</Text>
+        <Text style={styles.sectionTitle}>{t.settings.appSettings}</Text>
 
         <View style={styles.card}>
           <TouchableOpacity style={styles.menuItem} onPress={handleHelp}>
             <Text style={styles.menuIcon}>❓</Text>
-            <Text style={styles.menuText}>עזרה ותמיכה</Text>
+            <Text style={styles.menuText}>{t.settings.help}</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
@@ -281,7 +261,7 @@ export default function SettingsScreen({ navigation }: any) {
 
           <TouchableOpacity style={styles.menuItem} onPress={handleAbout}>
             <Text style={styles.menuIcon}>ℹ️</Text>
-            <Text style={styles.menuText}>אודות האפליקציה</Text>
+            <Text style={styles.menuText}>{t.settings.about}</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
@@ -289,7 +269,7 @@ export default function SettingsScreen({ navigation }: any) {
 
           <TouchableOpacity style={styles.menuItem} onPress={handlePrivacy}>
             <Text style={styles.menuIcon}>🔒</Text>
-            <Text style={styles.menuText}>מדיניות פרטיות</Text>
+            <Text style={styles.menuText}>{t.settings.privacy}</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
@@ -297,7 +277,7 @@ export default function SettingsScreen({ navigation }: any) {
 
           <TouchableOpacity style={styles.menuItem}>
             <Text style={styles.menuIcon}>⭐</Text>
-            <Text style={styles.menuText}>דרג אותנו</Text>
+            <Text style={styles.menuText}>{t.settings.rateUs}</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
         </View>
@@ -305,29 +285,28 @@ export default function SettingsScreen({ navigation }: any) {
 
       {/* Danger Zone */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚠️ אזור מסוכן</Text>
+        <Text style={styles.sectionTitle}>{t.settings.dangerZone}</Text>
 
         <View style={styles.card}>
           <TouchableOpacity
             style={styles.dangerButton}
             onPress={handleDeleteAccount}
           >
-            <Text style={styles.dangerButtonText}>🗑️ מחק חשבון</Text>
+            <Text style={styles.dangerButtonText}>{t.settings.deleteAccount}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Logout Button */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>התנתק 🚪</Text>
+        <Text style={styles.logoutButtonText}>{t.settings.logout}</Text>
       </TouchableOpacity>
 
       {/* App Version & Branding */}
       <View style={styles.brandingContainer}>
-        <Text style={styles.version}>גרסה 1.0.0</Text>
-        <Text style={styles.madeWith}>Made with ❤️ by</Text>
+        <Text style={styles.version}>{t.settings.version}</Text>
+        <Text style={styles.madeWith}>{t.settings.madeWith}</Text>
 
-        {/* Ventra Logo */}
         <View style={styles.logoContainer}>
           <Text style={styles.ventraText}>VENTRA</Text>
           <Text style={styles.softwareText}>SOFTWARE SYSTEMS LTD</Text>
@@ -588,5 +567,27 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  langBtn: {
+    flex: 1,
+    backgroundColor: '#ECF0F1',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  langBtnActive: {
+    backgroundColor: '#3498DB20',
+    borderColor: '#3498DB',
+  },
+  langBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#7F8C8D',
+  },
+  langBtnTextActive: {
+    color: '#3498DB',
   },
 });

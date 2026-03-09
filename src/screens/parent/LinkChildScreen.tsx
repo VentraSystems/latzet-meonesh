@@ -9,11 +9,13 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { createLinkingCode } from '../../utils/linkingCode';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function LinkChildScreen({ navigation }: any) {
   const [linkingCode, setLinkingCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const generateCode = async () => {
     if (!user) return;
@@ -23,7 +25,7 @@ export default function LinkChildScreen({ navigation }: any) {
       const code = await createLinkingCode(user.uid);
       setLinkingCode(code);
     } catch (error: any) {
-      showAlert('שגיאה', 'לא הצלחנו ליצור קוד');
+      showAlert(t.common.error, t.linkChild.errorGenerate);
     } finally {
       setLoading(false);
     }
@@ -31,10 +33,8 @@ export default function LinkChildScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>חיבור ילד</Text>
-      <Text style={styles.description}>
-        צור קוד חד-פעמי שהילד שלך יכול להשתמש בו כדי להתחבר לחשבון ההורה שלך
-      </Text>
+      <Text style={styles.title}>{t.linkChild.title}</Text>
+      <Text style={styles.description}>{t.linkChild.desc}</Text>
 
       {!linkingCode ? (
         <TouchableOpacity
@@ -45,31 +45,23 @@ export default function LinkChildScreen({ navigation }: any) {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.generateButtonText}>צור קוד חיבור</Text>
+            <Text style={styles.generateButtonText}>{t.linkChild.generateBtn}</Text>
           )}
         </TouchableOpacity>
       ) : (
         <View style={styles.codeContainer}>
-          <Text style={styles.codeLabel}>הקוד שלך:</Text>
+          <Text style={styles.codeLabel}>{t.linkChild.yourCode}</Text>
           <View style={styles.codeBox}>
             <Text style={styles.code}>{linkingCode}</Text>
           </View>
-          <Text style={styles.codeInfo}>
-            ⏳ הקוד תקף ל-10 דקות
-          </Text>
-          <Text style={styles.instructions}>
-            הילד שלך צריך:{'\n'}
-            1. להיכנס לאפליקציה{'\n'}
-            2. לבחור "ילד"{'\n'}
-            3. להירשם/להתחבר{'\n'}
-            4. להזין את הקוד הזה
-          </Text>
+          <Text style={styles.codeInfo}>{t.linkChild.codeValid}</Text>
+          <Text style={styles.instructions}>{t.linkChild.instructions}</Text>
 
           <TouchableOpacity
             style={styles.newCodeButton}
             onPress={generateCode}
           >
-            <Text style={styles.newCodeButtonText}>צור קוד חדש</Text>
+            <Text style={styles.newCodeButtonText}>{t.linkChild.newCode}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -78,7 +70,7 @@ export default function LinkChildScreen({ navigation }: any) {
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
-        <Text style={styles.backButtonText}>חזור</Text>
+        <Text style={styles.backButtonText}>{t.linkChild.back}</Text>
       </TouchableOpacity>
     </View>
   );

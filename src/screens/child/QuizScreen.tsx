@@ -12,6 +12,7 @@ import { QuizQuestion } from '../../data/taskPresets';
 import { notifyQuizPassed } from '../../utils/notifications';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Props {
   route: any;
@@ -21,6 +22,7 @@ interface Props {
 export default function QuizScreen({ route, navigation }: Props) {
   const { quiz, punishmentId, taskId } = route.params;
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -56,11 +58,14 @@ export default function QuizScreen({ route, navigation }: Props) {
     if (passed) {
       // Update task as completed
       showAlert(
-        'כל הכבוד! 🎉',
-        `עברת את החידון!\nצברת ${correct} מתוך ${questions.length} נכון (${Math.round(percentage)}%)`,
+        t.quiz.passedTitle,
+        t.quiz.passedMsg
+          .replace('{correct}', String(correct))
+          .replace('{total}', String(questions.length))
+          .replace('{pct}', String(Math.round(percentage))),
         [
           {
-            text: 'אישור',
+            text: t.quiz.confirm,
             onPress: async () => {
               try {
                 // Get punishment document
@@ -111,11 +116,14 @@ export default function QuizScreen({ route, navigation }: Props) {
       );
     } else {
       showAlert(
-        'כמעט! 💪',
-        `קיבלת ${correct} מתוך ${questions.length} נכון (${Math.round(percentage)}%)\nצריך לפחות 60% כדי לעבור.\nנסה שוב!`,
+        t.quiz.failedTitle,
+        t.quiz.failedMsg
+          .replace('{correct}', String(correct))
+          .replace('{total}', String(questions.length))
+          .replace('{pct}', String(Math.round(percentage))),
         [
           {
-            text: 'נסה שוב',
+            text: t.quiz.tryAgain,
             onPress: () => {
               setCurrentQuestion(0);
               setSelectedAnswers([]);
@@ -136,13 +144,15 @@ export default function QuizScreen({ route, navigation }: Props) {
     return (
       <View style={styles.container}>
         <ScrollView>
-          <Text style={styles.title}>תוצאות החידון</Text>
+          <Text style={styles.title}>{t.quiz.results}</Text>
 
           {questions.map((q, index) => {
             const isCorrect = selectedAnswers[index] === q.correctAnswer;
             return (
               <View key={index} style={styles.resultItem}>
-                <Text style={styles.questionNumber}>שאלה {index + 1}</Text>
+                <Text style={styles.questionNumber}>
+                  {t.quiz.questionOf.replace('{current}', String(index + 1)).replace('{total}', String(questions.length))}
+                </Text>
                 <Text style={styles.questionText}>{q.question}</Text>
                 <Text
                   style={[
@@ -150,11 +160,11 @@ export default function QuizScreen({ route, navigation }: Props) {
                     isCorrect ? styles.correctAnswer : styles.wrongAnswer,
                   ]}
                 >
-                  {isCorrect ? '✓' : '✗'} התשובה שלך: {q.options[selectedAnswers[index]]}
+                  {isCorrect ? '✓' : '✗'} {t.quiz.yourAnswer} {q.options[selectedAnswers[index]]}
                 </Text>
                 {!isCorrect && (
                   <Text style={styles.correctAnswerText}>
-                    תשובה נכונה: {q.options[q.correctAnswer]}
+                    {t.quiz.correctAnswer} {q.options[q.correctAnswer]}
                   </Text>
                 )}
               </View>
@@ -178,7 +188,7 @@ export default function QuizScreen({ route, navigation }: Props) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.questionCounter}>
-          שאלה {currentQuestion + 1} מתוך {questions.length}
+          {t.quiz.questionOf.replace('{current}', String(currentQuestion + 1)).replace('{total}', String(questions.length))}
         </Text>
         <View style={styles.progressBar}>
           <View

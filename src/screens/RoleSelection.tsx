@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UserRole } from '../types';
-
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+import { useLanguage } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -13,12 +11,14 @@ interface Props {
 }
 
 export default function RoleSelection({ onRoleSelect }: Props) {
+  const { t, isRTL } = useLanguage();
+
   return (
     <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>🚪</Text>
-        <Text style={styles.title}>לצאת מעונש</Text>
-        <Text style={styles.subtitle}>האפליקציה שמשנה את חינוך הילדים</Text>
+        <Text style={styles.title}>{t.appName}</Text>
+        <Text style={styles.subtitle}>{t.roleSelection.subtitle}</Text>
       </View>
 
       <View style={styles.cardsContainer}>
@@ -34,10 +34,10 @@ export default function RoleSelection({ onRoleSelect }: Props) {
             end={{ x: 1, y: 1 }}
           >
             <Text style={styles.cardEmoji}>👨‍👩‍👧‍👦</Text>
-            <Text style={styles.cardTitle}>הורה</Text>
-            <Text style={styles.cardDesc}>הגדר משימות, אשר ביצועים וניהל את ילדך</Text>
+            <Text style={styles.cardTitle}>{t.roles.parent}</Text>
+            <Text style={styles.cardDesc}>{t.roleSelection.parentDesc}</Text>
             <View style={styles.cardArrow}>
-              <Text style={styles.arrowText}>← התחברות</Text>
+              <Text style={styles.arrowText}>{t.roleSelection.login}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -54,17 +54,17 @@ export default function RoleSelection({ onRoleSelect }: Props) {
             end={{ x: 1, y: 1 }}
           >
             <Text style={styles.cardEmoji}>⭐</Text>
-            <Text style={styles.cardTitleDark}>ילד</Text>
-            <Text style={styles.cardDescDark}>השלם משימות וצבור חופש!</Text>
+            <Text style={styles.cardTitleDark}>{t.roles.child}</Text>
+            <Text style={styles.cardDescDark}>{t.roleSelection.childDesc}</Text>
             <View style={styles.cardArrow}>
-              <Text style={styles.arrowTextDark}>← התחברות</Text>
+              <Text style={styles.arrowTextDark}>{t.roleSelection.login}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Ventra Software Systems LTD</Text>
+        <Text style={styles.footerText}>{t.roleSelection.footer}</Text>
       </View>
     </LinearGradient>
   );

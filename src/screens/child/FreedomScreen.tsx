@@ -13,6 +13,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { notifyPunishmentCompleted } from '../../utils/notifications';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,6 +25,7 @@ interface Props {
 export default function FreedomScreen({ route, navigation }: Props) {
   const { punishmentId } = route.params || {};
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [punishment, setPunishment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -147,22 +149,22 @@ export default function FreedomScreen({ route, navigation }: Props) {
           </Animated.Text>
 
           {/* Main Title */}
-          <Text style={styles.title}>!יצאת מעונש</Text>
-          <Text style={styles.subtitle}>כל הכבוד! השלמת את כל המשימות</Text>
+          <Text style={styles.title}>{t.freedom.title}</Text>
+          <Text style={styles.subtitle}>{t.freedom.subtitle}</Text>
 
           {/* Achievement Card */}
           <View style={styles.achievementCard}>
             <Text style={styles.achievementEmoji}>🏆</Text>
-            <Text style={styles.achievementTitle}>הישג מרשים!</Text>
+            <Text style={styles.achievementTitle}>{t.freedom.achievementTitle}</Text>
             <Text style={styles.achievementText}>
-              השלמת {totalTasks} משימות בהצלחה
+              {t.freedom.achievementText.replace('{n}', String(totalTasks))}
             </Text>
           </View>
 
           {/* Tasks Summary */}
           {punishment && (
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>📋 סיכום המשימות שביצעת</Text>
+              <Text style={styles.summaryTitle}>{t.freedom.summary}</Text>
 
               {completedTasks.map((task: any, index: number) => (
                 <View key={task.id} style={styles.taskItem}>
@@ -170,7 +172,7 @@ export default function FreedomScreen({ route, navigation }: Props) {
                   <View style={styles.taskContent}>
                     <Text style={styles.taskTitle}>{task.title}</Text>
                     {task.quizScore && (
-                      <Text style={styles.taskScore}>ציון: {task.quizScore}%</Text>
+                      <Text style={styles.taskScore}>{t.freedom.quizScore} {task.quizScore}%</Text>
                     )}
                   </View>
                   <Text style={styles.taskCheck}>✅</Text>
@@ -178,9 +180,9 @@ export default function FreedomScreen({ route, navigation }: Props) {
               ))}
 
               <View style={styles.punishmentInfo}>
-                <Text style={styles.punishmentName}>עונש: {punishment.name}</Text>
+                <Text style={styles.punishmentName}>{t.freedom.punishment} {punishment.name}</Text>
                 <Text style={styles.completionTime}>
-                  הושלם בהצלחה! 🎊
+                  {t.freedom.completedMsg}
                 </Text>
               </View>
             </View>
@@ -190,7 +192,7 @@ export default function FreedomScreen({ route, navigation }: Props) {
           <View style={styles.messageCard}>
             <Text style={styles.messageIcon}>💡</Text>
             <Text style={styles.messageText}>
-              זכור: התנהגות טובה וביצוע משימות עוזרים לך להישאר חופשי ולהימנע מעונשים בעתיד!
+              {t.freedom.motivationalMsg}
             </Text>
           </View>
 
@@ -199,17 +201,17 @@ export default function FreedomScreen({ route, navigation }: Props) {
             <View style={styles.statsContainer}>
               <View style={styles.statBox}>
                 <Text style={styles.statNumber}>{totalTasks}</Text>
-                <Text style={styles.statLabel}>משימות</Text>
+                <Text style={styles.statLabel}>{t.freedom.tasks}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text style={styles.statNumber}>
                   {completedTasks.filter((t: any) => t.type === 'quiz').length}
                 </Text>
-                <Text style={styles.statLabel}>חידונים</Text>
+                <Text style={styles.statLabel}>{t.freedom.quizzes}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text style={styles.statNumber}>100%</Text>
-                <Text style={styles.statLabel}>הצלחה</Text>
+                <Text style={styles.statLabel}>{t.freedom.successPct}</Text>
               </View>
             </View>
           )}
@@ -225,17 +227,17 @@ export default function FreedomScreen({ route, navigation }: Props) {
               });
             }}
           >
-            <Text style={styles.continueButtonText}>חזור לבית 🏠</Text>
+            <Text style={styles.continueButtonText}>{t.freedom.continueBtn}</Text>
           </TouchableOpacity>
 
           {/* Celebration Footer */}
           <Text style={styles.footerText}>
-            ההורים שלך מאוד גאים בך! 🌟
+            {t.freedom.parentProud}
           </Text>
 
           {/* Ventra Branding */}
           <Text style={styles.brandingText}>
-            Made with ❤️ by Ventra Software Systems LTD
+            {t.freedom.footer}
           </Text>
         </Animated.View>
       </ScrollView>

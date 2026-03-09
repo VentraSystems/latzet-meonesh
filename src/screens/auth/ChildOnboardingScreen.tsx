@@ -15,6 +15,7 @@ import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
 import { verifyAndUseLinkingCode } from '../../utils/linkingCode';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function ChildOnboardingScreen({ navigation }: any) {
   const [step, setStep] = useState(1); // 1 = code entry, 2 = name entry, 3 = grade selection
@@ -25,6 +26,7 @@ export default function ChildOnboardingScreen({ navigation }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const codeInputRef = useRef<TextInput>(null);
   const digitRefs = useRef<(TextInput | null)[]>([]);
+  const { t, isRTL, language } = useLanguage();
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -36,7 +38,7 @@ export default function ChildOnboardingScreen({ navigation }: any) {
 
   const handleCodeSubmit = () => {
     if (code.length !== 6) {
-      showAlert('שגיאה', 'נא להזין קוד בן 6 ספרות');
+      showAlert(t.common.error, t.onboarding.errorCode);
       return;
     }
     setStep(2);
@@ -46,7 +48,7 @@ export default function ChildOnboardingScreen({ navigation }: any) {
 
   const handleNameSubmit = () => {
     if (!name.trim()) {
-      showAlert('שגיאה', 'נא להזין את השם שלך');
+      showAlert(t.common.error, t.onboarding.errorName);
       return;
     }
     setStep(3);
@@ -72,7 +74,7 @@ export default function ChildOnboardingScreen({ navigation }: any) {
       if (!result.success) {
         // Delete the auth account if linking fails
         await userCredential.user.delete();
-        showAlert('שגיאה', result.error || 'קוד לא תקין');
+        showAlert(t.common.error, result.error || t.onboarding.errorGeneral);
         setLoading(false);
         return;
       }
@@ -90,16 +92,16 @@ export default function ChildOnboardingScreen({ navigation }: any) {
         badges: [],
       });
 
-      showAlert('!כל הכבוד 🎉', `ברוכים הבאים, ${name}!`, [
+      showAlert(t.onboarding.welcomeTitle, t.onboarding.welcomeMsg.replace('{name}', name), [
         {
-          text: 'אישור',
+          text: t.common.ok,
           onPress: () => {
             // Navigation will happen automatically via AuthContext
           },
         },
       ]);
     } catch (error: any) {
-      showAlert('שגיאה', 'משהו השתבש. נסה שוב');
+      showAlert(t.common.error, t.onboarding.errorGeneral);
       setLoading(false);
     }
   };
@@ -109,8 +111,8 @@ export default function ChildOnboardingScreen({ navigation }: any) {
       <LinearGradient colors={['#c0392b', '#e74c3c', '#e67e22']} style={styles.container}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <Text style={styles.emoji}>👶</Text>
-          <Text style={styles.title}>שלום!</Text>
-          <Text style={styles.subtitle}>יש לך קוד מההורה שלך?</Text>
+          <Text style={styles.title}>{t.onboarding.step1Title}</Text>
+          <Text style={styles.subtitle}>{t.onboarding.step1Subtitle}</Text>
 
           {Platform.OS === 'web' ? (
             <View style={styles.codeInputContainer}>
@@ -172,21 +174,21 @@ export default function ChildOnboardingScreen({ navigation }: any) {
             </>
           )}
 
-          <Text style={styles.hint}>הקלד את 6 הספרות שקיבלת מההורה</Text>
+          <Text style={styles.hint}>{t.onboarding.step1Hint}</Text>
 
           <TouchableOpacity
             style={[styles.button, code.length !== 6 && styles.buttonDisabled]}
             onPress={handleCodeSubmit}
             disabled={code.length !== 6}
           >
-            <Text style={styles.buttonText}>המשך ➜</Text>
+            <Text style={styles.buttonText}>{t.onboarding.step1Btn} ➜</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>חזור להתחברות</Text>
+            <Text style={styles.backButtonText}>{t.onboarding.backToLogin}</Text>
           </TouchableOpacity>
         </Animated.View>
       </LinearGradient>
@@ -197,12 +199,12 @@ export default function ChildOnboardingScreen({ navigation }: any) {
     <LinearGradient colors={['#c0392b', '#e74c3c', '#e67e22']} style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <Text style={styles.emoji}>✨</Text>
-        <Text style={styles.title}>קוד תקין!</Text>
-        <Text style={styles.subtitle}>מה השם שלך?</Text>
+        <Text style={styles.title}>{t.onboarding.step2Title}</Text>
+        <Text style={styles.subtitle}>{t.onboarding.step2Subtitle}</Text>
 
         <TextInput
           style={styles.nameInput}
-          placeholder="השם שלך"
+          placeholder={t.onboarding.step2Placeholder}
           value={name}
           onChangeText={setName}
           autoFocus
@@ -213,14 +215,14 @@ export default function ChildOnboardingScreen({ navigation }: any) {
           style={styles.button}
           onPress={handleNameSubmit}
         >
-          <Text style={styles.buttonText}>המשך ➜</Text>
+          <Text style={styles.buttonText}>{t.onboarding.step2Btn} ➜</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => setStep(1)}
         >
-          <Text style={styles.backButtonText}>חזור</Text>
+          <Text style={styles.backButtonText}>{t.onboarding.back}</Text>
         </TouchableOpacity>
       </Animated.View>
     </LinearGradient>
@@ -231,8 +233,8 @@ export default function ChildOnboardingScreen({ navigation }: any) {
     <LinearGradient colors={['#c0392b', '#e74c3c', '#e67e22']} style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <Text style={styles.emoji}>🎓</Text>
-        <Text style={styles.title}>שלום, {name}!</Text>
-        <Text style={styles.subtitle}>באיזו כיתה אתה?</Text>
+        <Text style={styles.title}>{t.onboarding.step3Title.replace('{name}', name)}</Text>
+        <Text style={styles.subtitle}>{t.onboarding.step3Subtitle}</Text>
 
         <View style={styles.gradeGrid}>
           {GRADES.map((g, i) => (
@@ -242,7 +244,7 @@ export default function ChildOnboardingScreen({ navigation }: any) {
               onPress={() => setGrade(i + 1)}
             >
               <Text style={[styles.gradePillText, grade === i + 1 && styles.gradePillTextSelected]}>
-                כיתה {g}
+                {language === 'en' ? `${t.onboarding.gradePrefix} ${i + 1}` : `${t.onboarding.gradePrefix} ${g}`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -256,7 +258,7 @@ export default function ChildOnboardingScreen({ navigation }: any) {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.buttonText}>!בואו נתחיל 🚀</Text>
+            <Text style={styles.buttonText}>{t.onboarding.step3Btn}</Text>
           )}
         </TouchableOpacity>
 
@@ -264,7 +266,7 @@ export default function ChildOnboardingScreen({ navigation }: any) {
           style={styles.backButton}
           onPress={() => setStep(2)}
         >
-          <Text style={styles.backButtonText}>חזור</Text>
+          <Text style={styles.backButtonText}>{t.onboarding.back}</Text>
         </TouchableOpacity>
       </Animated.View>
     </LinearGradient>
