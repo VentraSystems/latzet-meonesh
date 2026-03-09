@@ -21,20 +21,20 @@ const AI_QUIZ_URL = 'https://escapechallenge.ventrasystems.com/api/generate-quiz
 const AI_SUGGEST_URL = 'https://escapechallenge.ventrasystems.com/api/suggest-tasks';
 
 const AI_SUBJECTS = [
-  { id: 'math',      label: 'מתמטיקה',   icon: '🔢', color: '#E74C3C' },
-  { id: 'hebrew',    label: 'עברית',      icon: '📖', color: '#9B59B6' },
-  { id: 'english',   label: 'אנגלית',     icon: '🇬🇧', color: '#3498DB' },
-  { id: 'science',   label: 'מדעים',      icon: '🔬', color: '#27AE60' },
-  { id: 'bible',     label: 'תנ"ך',       icon: '📜', color: '#E67E22' },
-  { id: 'history',   label: 'היסטוריה',   icon: '🏛️', color: '#795548' },
-  { id: 'geography', label: 'גיאוגרפיה',  icon: '🌍', color: '#00BCD4' },
-  { id: 'general',   label: 'ידע כללי',   icon: '🧠', color: '#F39C12' },
+  { id: 'math',      label: 'מתמטיקה',   labelEn: 'Math',       icon: '🔢', color: '#E74C3C' },
+  { id: 'hebrew',    label: 'עברית',      labelEn: 'Hebrew',     icon: '📖', color: '#9B59B6' },
+  { id: 'english',   label: 'אנגלית',     labelEn: 'English',    icon: '🇬🇧', color: '#3498DB' },
+  { id: 'science',   label: 'מדעים',      labelEn: 'Science',    icon: '🔬', color: '#27AE60' },
+  { id: 'bible',     label: 'תנ"ך',       labelEn: 'Bible',      icon: '📜', color: '#E67E22' },
+  { id: 'history',   label: 'היסטוריה',   labelEn: 'History',    icon: '🏛️', color: '#795548' },
+  { id: 'geography', label: 'גיאוגרפיה',  labelEn: 'Geography',  icon: '🌍', color: '#00BCD4' },
+  { id: 'general',   label: 'ידע כללי',   labelEn: 'General',    icon: '🧠', color: '#F39C12' },
 ];
 
 const DIFFICULTIES = [
-  { id: 'easy',   label: 'קל 😊' },
-  { id: 'medium', label: 'בינוני 🤔' },
-  { id: 'hard',   label: 'קשה 💪' },
+  { id: 'easy',   label: 'קל 😊',        labelEn: 'Easy 😊' },
+  { id: 'medium', label: 'בינוני 🤔',    labelEn: 'Medium 🤔' },
+  { id: 'hard',   label: 'קשה 💪',       labelEn: 'Hard 💪' },
 ];
 
 const GRADES = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'];
@@ -70,7 +70,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
   const [tempGrade, setTempGrade] = useState(4);
 
   const { user, linkedUserId } = useAuth();
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
 
   useEffect(() => {
     if (!linkedUserId) return;
@@ -91,7 +91,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
       const resp = await fetch(AI_SUGGEST_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade: childGrade, age: childGrade + 5, childName: childName || 'הילד' }),
+        body: JSON.stringify({ grade: childGrade, age: childGrade + 5, childName: childName || (language === 'en' ? 'the child' : 'הילד'), language }),
       });
       const data = await resp.json();
       if (!data.success || !data.tasks) throw new Error('שגיאה בקבלת הצעות');
@@ -178,7 +178,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
       let generatedQuizzes: Record<string, any> = {};
 
       if (aiSubjectIds.length > 0) {
-        setLoadingMsg(`מייצר ${aiSubjectIds.length} חידון AI...`);
+        setLoadingMsg(language === 'en' ? `Generating ${aiSubjectIds.length} AI quiz(zes)...` : `מייצר ${aiSubjectIds.length} חידון AI...`);
         const results = await Promise.all(
           aiSubjectIds.map(async (subjectId) => {
             const cfg = aiQuizzes[subjectId];
@@ -193,7 +193,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
               }),
             });
             const data = await resp.json();
-            if (!data.success) throw new Error(`שגיאה ביצירת חידון ${subjectId}`);
+            if (!data.success) throw new Error(language === 'en' ? `Error generating quiz for ${subjectId}` : `שגיאה ביצירת חידון ${subjectId}`);
             return { subjectId, data };
           })
         );
@@ -202,17 +202,23 @@ export default function SetPunishmentScreen({ navigation }: any) {
         });
       }
 
-      setLoadingMsg('שומר עונש...');
+      setLoadingMsg(language === 'en' ? 'Saving...' : 'שומר עונש...');
 
       // Build preset tasks
       const presetTasks = selectedTasks.map((taskId) => {
         const preset = taskPresets.find((t) => t.id === taskId);
         if (preset) {
-          return { id: taskId, title: preset.title, description: preset.description, type: preset.type, status: 'pending' };
+          return {
+            id: taskId,
+            title: language === 'en' ? preset.titleEn : preset.title,
+            description: language === 'en' ? preset.descriptionEn : preset.description,
+            type: preset.type,
+            status: 'pending',
+          };
         }
         // Custom
         const customTitle = taskId.split('-').slice(2).join('-');
-        return { id: taskId, title: customTitle, description: 'משימה מותאמת אישית', type: 'task', status: 'pending' };
+        return { id: taskId, title: customTitle, description: language === 'en' ? 'Custom task' : 'משימה מותאמת אישית', type: 'task', status: 'pending' };
       });
 
       // Build AI quiz tasks
@@ -220,17 +226,24 @@ export default function SetPunishmentScreen({ navigation }: any) {
         const cfg = aiQuizzes[subjectId];
         const qdata = generatedQuizzes[subjectId];
         const subject = AI_SUBJECTS.find((s) => s.id === subjectId);
-        const diffLabel = DIFFICULTIES.find((d) => d.id === cfg.difficulty)?.label || cfg.difficulty;
-        const gradeLabel = GRADES[cfg.grade - 1] || String(cfg.grade);
+        const subjectLabel = language === 'en' ? (subject?.labelEn || subject?.label) : subject?.label;
+        const diffLabel = language === 'en'
+          ? (DIFFICULTIES.find((d) => d.id === cfg.difficulty)?.labelEn || cfg.difficulty)
+          : (DIFFICULTIES.find((d) => d.id === cfg.difficulty)?.label || cfg.difficulty);
+        const gradeLabel = language === 'en' ? String(cfg.grade) : (GRADES[cfg.grade - 1] || String(cfg.grade));
         return {
           id: `ai-quiz-${subjectId}-${Date.now()}`,
-          title: `${subject?.icon} חידון ${subject?.label} - כיתה ${gradeLabel}`,
-          description: `${diffLabel} • 5 שאלות • נוצר ע"י AI`,
+          title: language === 'en'
+            ? `${subject?.icon} ${subjectLabel} Quiz - Grade ${gradeLabel}`
+            : `${subject?.icon} חידון ${subjectLabel} - כיתה ${gradeLabel}`,
+          description: language === 'en'
+            ? `${diffLabel} • 5 questions • AI generated`
+            : `${diffLabel} • 5 שאלות • נוצר ע"י AI`,
           type: 'quiz',
           status: 'pending',
           quizData: {
             id: `ai-quiz-${subjectId}`,
-            title: `חידון ${qdata.subjectName}`,
+            title: language === 'en' ? `${subjectLabel} Quiz` : `חידון ${qdata.subjectName}`,
             subject: qdata.subjectName,
             difficulty: cfg.difficulty,
             questions: qdata.questions,
@@ -317,7 +330,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
               >
                 <Text style={styles.taskCardIcon}>{task.icon}</Text>
                 <Text style={[styles.taskCardTitle, selected && styles.taskCardTitleSelected]}>
-                  {task.title}
+                  {language === 'en' ? task.titleEn : task.title}
                 </Text>
                 {selected && <Text style={styles.taskCardCheck}>✓</Text>}
               </TouchableOpacity>
@@ -340,7 +353,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
               >
                 <Text style={styles.taskCardIcon}>{task.icon}</Text>
                 <Text style={[styles.taskCardTitle, selected && styles.taskCardTitleSelected]}>
-                  {task.title}
+                  {language === 'en' ? task.titleEn : task.title}
                 </Text>
                 {selected && <Text style={styles.taskCardCheck}>✓</Text>}
               </TouchableOpacity>
@@ -371,7 +384,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                 >
                   <Text style={styles.subjectIcon}>{subject.icon}</Text>
                   <Text style={[styles.subjectLabel, isAdded && styles.subjectLabelAdded]}>
-                    {subject.label}
+                    {language === 'en' ? subject.labelEn : subject.label}
                   </Text>
                   {isAdded && (
                     <TouchableOpacity
@@ -386,7 +399,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                 {/* Expanded config panel */}
                 {isExpanded && (
                   <View style={[styles.configPanel, { borderColor: subject.color }]}>
-                    <Text style={styles.configTitle}>הגדרות חידון {subject.icon} {subject.label}</Text>
+                    <Text style={styles.configTitle}>{language === 'en' ? `Quiz Settings ${subject.icon} ${subject.labelEn}` : `הגדרות חידון ${subject.icon} ${subject.label}`}</Text>
 
                     <Text style={[styles.configLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.diffLabel}</Text>
                     <View style={styles.pillRow}>
@@ -397,7 +410,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                           onPress={() => setTempDifficulty(d.id)}
                         >
                           <Text style={[styles.pillText, tempDifficulty === d.id && styles.pillTextSelected]}>
-                            {d.label}
+                            {language === 'en' ? d.labelEn : d.label}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -421,7 +434,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                       onPress={() => confirmAddQuiz(subject.id)}
                     >
                       <Text style={styles.confirmButtonText}>
-                        {isAdded ? t.setPunishment.updateQuiz : t.setPunishment.addQuiz.replace('{subject}', subject.label)}
+                        {isAdded ? t.setPunishment.updateQuiz : t.setPunishment.addQuiz.replace('{subject}', language === 'en' ? subject.labelEn : subject.label)}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -431,7 +444,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                 {isAdded && !isExpanded && (
                   <View style={styles.addedSummary}>
                     <Text style={styles.addedSummaryText}>
-                      כיתה {GRADES[aiQuizzes[subject.id].grade - 1]} • {DIFFICULTIES.find(d => d.id === aiQuizzes[subject.id].difficulty)?.label}
+                      {language === 'en' ? `Grade ${aiQuizzes[subject.id].grade}` : `כיתה ${GRADES[aiQuizzes[subject.id].grade - 1]}`} • {language === 'en' ? DIFFICULTIES.find(d => d.id === aiQuizzes[subject.id].difficulty)?.labelEn : DIFFICULTIES.find(d => d.id === aiQuizzes[subject.id].difficulty)?.label}
                     </Text>
                   </View>
                 )}
@@ -474,7 +487,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
                     {s.title}
                   </Text>
                   <Text style={styles.suggestionDesc} numberOfLines={2}>{s.description}</Text>
-                  <Text style={styles.suggestionTime}>⏱ {s.estimatedMinutes} דק'</Text>
+                  <Text style={styles.suggestionTime}>⏱ {s.estimatedMinutes} {language === 'en' ? 'min' : "דק'"}</Text>
                   {isSelected && <Text style={styles.suggestionCheck}>✓</Text>}
                 </TouchableOpacity>
               );

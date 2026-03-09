@@ -1,7 +1,9 @@
 export interface TaskPreset {
   id: string;
   title: string;
+  titleEn: string;
   description: string;
+  descriptionEn: string;
   icon: string;
   type: 'task' | 'quiz';
   category: 'chores' | 'homework' | 'behavior' | 'education';
@@ -27,7 +29,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'clean-room',
     title: 'ניקיון חדר',
+    titleEn: 'Clean Room',
     description: 'לנקות את החדר ולסדר את כל הדברים',
+    descriptionEn: 'Clean the room and organize everything',
     icon: '🧹',
     type: 'task',
     category: 'chores',
@@ -35,7 +39,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'make-bed',
     title: 'סידור המיטה',
+    titleEn: 'Make the Bed',
     description: 'לסדר את המיטה בצורה מסודרת',
+    descriptionEn: 'Make the bed neatly',
     icon: '🛏️',
     type: 'task',
     category: 'chores',
@@ -43,7 +49,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'wash-dishes',
     title: 'שטיפת כלים',
+    titleEn: 'Wash the Dishes',
     description: 'לשטוף את הכלים המלוכלכים',
+    descriptionEn: 'Wash all the dirty dishes',
     icon: '🍽️',
     type: 'task',
     category: 'chores',
@@ -51,7 +59,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'take-out-trash',
     title: 'הוצאת אשפה',
+    titleEn: 'Take Out the Trash',
     description: 'להוציא את האשפה לפח בחוץ',
+    descriptionEn: 'Take the trash bag outside to the bin',
     icon: '🗑️',
     type: 'task',
     category: 'chores',
@@ -59,7 +69,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'organize-closet',
     title: 'סידור ארון',
+    titleEn: 'Organize Closet',
     description: 'לסדר את הבגדים בארון',
+    descriptionEn: 'Fold and organize clothes in the closet',
     icon: '👔',
     type: 'task',
     category: 'chores',
@@ -67,7 +79,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'clean-bathroom',
     title: 'ניקיון שירותים',
+    titleEn: 'Clean the Bathroom',
     description: 'לנקות את השירותים והאמבטיה',
+    descriptionEn: 'Clean the toilet and bathroom',
     icon: '🚿',
     type: 'task',
     category: 'chores',
@@ -77,7 +91,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'do-homework',
     title: 'שיעורי בית',
+    titleEn: 'Do Homework',
     description: 'לעשות את כל שיעורי הבית',
+    descriptionEn: 'Complete all homework assignments',
     icon: '📚',
     type: 'task',
     category: 'homework',
@@ -85,7 +101,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'read-book',
     title: 'קריאת ספר',
+    titleEn: 'Read a Book',
     description: 'לקרוא 20 דקות',
+    descriptionEn: 'Read for 20 minutes',
     icon: '📖',
     type: 'task',
     category: 'homework',
@@ -93,7 +111,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'practice-math',
     title: 'תרגול מתמטיקה',
+    titleEn: 'Practice Math',
     description: 'לעשות 10 תרגילים במתמטיקה',
+    descriptionEn: 'Complete 10 math exercises',
     icon: '🔢',
     type: 'task',
     category: 'homework',
@@ -101,7 +121,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'study-english',
     title: 'לימוד אנגלית',
+    titleEn: 'Study English',
     description: 'ללמוד 10 מילים חדשות באנגלית',
+    descriptionEn: 'Learn 10 new English words',
     icon: '🇬🇧',
     type: 'task',
     category: 'homework',
@@ -111,7 +133,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'apologize',
     title: 'להתנצל',
+    titleEn: 'Apologize',
     description: 'להתנצל על ההתנהגות',
+    descriptionEn: 'Apologize sincerely for the behavior',
     icon: '🙏',
     type: 'task',
     category: 'behavior',
@@ -119,7 +143,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'help-sibling',
     title: 'לעזור לאח/אחות',
+    titleEn: 'Help a Sibling',
     description: 'לעזור לאח או אחות במשימה',
+    descriptionEn: 'Help a brother or sister with a task',
     icon: '🤝',
     type: 'task',
     category: 'behavior',
@@ -127,7 +153,9 @@ export const taskPresets: TaskPreset[] = [
   {
     id: 'no-phone-hour',
     title: 'שעה בלי טלפון',
+    titleEn: 'One Hour No Phone',
     description: 'לא להשתמש בטלפון לשעה שלמה',
+    descriptionEn: 'No phone use for a full hour',
     icon: '📵',
     type: 'task',
     category: 'behavior',
