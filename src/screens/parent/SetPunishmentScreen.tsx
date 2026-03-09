@@ -72,6 +72,11 @@ export default function SetPunishmentScreen({ navigation }: any) {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
 
+  // Per-task details (notes + reference photos)
+  const [expandedTaskDetail, setExpandedTaskDetail] = useState<string | null>(null);
+  const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
+  const [taskRefPhotos, setTaskRefPhotos] = useState<Record<string, string[]>>({});
+
   // Homework tasks
   const [homeworkTasks, setHomeworkTasks] = useState<HomeworkTask[]>([]);
   const [hwTitle, setHwTitle] = useState('');
@@ -279,22 +284,36 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
       setLoadingMsg(language === 'en' ? 'Saving...' : 'שומר עונש...');
 
+      // Upload reference photos for preset tasks
+      if (Object.values(taskRefPhotos).some((photos) => photos.length > 0)) {
+        setLoadingMsg(language === 'en' ? 'Uploading reference photos...' : 'מעלה תמונות עזר...');
+      }
+      const uploadedRefPhotos: Record<string, string[]> = {};
+      await Promise.all(
+        Object.entries(taskRefPhotos).map(async ([taskId, uris]) => {
+          if (uris.length === 0) return;
+          uploadedRefPhotos[taskId] = await Promise.all(uris.map((uri, i) => uploadRefPhoto(uri, taskId, i)));
+        })
+      );
+
       // Build preset tasks
       const presetTasks = selectedTasks.map((taskId) => {
         const preset = taskPresets.find((t) => t.id === taskId);
         if (preset) {
+          const parentNote = taskNotes[taskId] || '';
+          const refPhotoUrls = uploadedRefPhotos[taskId] || [];
           // Special case: no-phone with chosen duration
           if (taskId === 'no-phone-hour' && noPhoneConfirmed !== null) {
             const dur = fmtDuration(noPhoneConfirmed);
             return {
               id: taskId,
               title: language === 'en' ? `📵 No Phone — ${dur}` : `📵 בלי טלפון — ${dur}`,
-              description: language === 'en'
-                ? `No phone use for ${dur}`
-                : `לא להשתמש בטלפון למשך ${dur}`,
+              description: language === 'en' ? `No phone use for ${dur}` : `לא להשתמש בטלפון למשך ${dur}`,
               type: preset.type,
               status: 'pending',
               noPhoneHours: noPhoneConfirmed,
+              ...(parentNote ? { parentNote } : {}),
+              ...(refPhotoUrls.length ? { refPhotoUrls } : {}),
             };
           }
           return {
@@ -303,6 +322,8 @@ export default function SetPunishmentScreen({ navigation }: any) {
             description: language === 'en' ? preset.descriptionEn : preset.description,
             type: preset.type,
             status: 'pending',
+            ...(parentNote ? { parentNote } : {}),
+            ...(refPhotoUrls.length ? { refPhotoUrls } : {}),
           };
         }
         // Custom
@@ -390,6 +411,43 @@ export default function SetPunishmentScreen({ navigation }: any) {
     }
   };
 
+  const pickRefPhoto = async (taskId: string) => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ ...PICK_OPTS, allowsMultipleSelection: true });
+    if (!result.canceled && result.assets.length > 0) {
+      const newUris = result.assets.map((a) => a.uri);
+      setTaskRefPhotos((prev) => {
+        const existing = prev[taskId] || [];
+        const combined = [...existing, ...newUris].slice(0, 4); // max 4 photos
+        return { ...prev, [taskId]: combined };
+      });
+    }
+  };
+
+  const removeRefPhoto = (taskId: string, idx: number) => {
+    setTaskRefPhotos((prev) => {
+      const updated = (prev[taskId] || []).filter((_, i) => i !== idx);
+      return { ...prev, [taskId]: updated };
+    });
+  };
+
+  const uploadRefPhoto = (uri: string, taskId: string, idx: number): Promise<string> =>
+    new Promise(async (resolve, reject) => {
+      try {
+        const blob = await (await fetch(uri)).blob();
+        const uploadTask = uploadBytesResumable(
+          ref(storage, `ref-photos/${user!.uid}/${taskId}/${idx}-${Date.now()}.jpg`),
+          blob, { contentType: 'image/jpeg' }
+        );
+        uploadTask.on('state_changed', null, reject, async () => {
+          resolve(await getDownloadURL(uploadTask.snapshot.ref));
+        });
+      } catch (e) { reject(e); }
+    });
+
   const NO_PHONE_DURATIONS = [0.5, 1, 2, 3, 4, 6, 8, 12, 24];
 
   const fmtDuration = (h: number) => {
@@ -412,6 +470,78 @@ export default function SetPunishmentScreen({ navigation }: any) {
     setNoPhoneConfirmed(null);
     setNoPhoneExpanded(false);
     setSelectedTasks((prev) => prev.filter((id) => id !== 'no-phone-hour'));
+  };
+
+  const renderTaskCard = (task: any) => {
+    const selected = selectedTasks.includes(task.id);
+    const isExpanded = expandedTaskDetail === task.id;
+    const note = taskNotes[task.id] || '';
+    const refPhotos = taskRefPhotos[task.id] || [];
+    const hasDetails = note.trim() || refPhotos.length > 0;
+
+    return (
+      <View key={task.id} style={styles.taskCardWrap}>
+        <TouchableOpacity
+          style={[styles.taskCard, selected && styles.taskCardSelected, isExpanded && styles.taskCardExpandedTop]}
+          onPress={() => {
+            if (!selected) { toggleTask(task.id); return; }
+            setExpandedTaskDetail(isExpanded ? null : task.id);
+          }}
+        >
+          <Text style={styles.taskCardIcon}>{task.icon}</Text>
+          <Text style={[styles.taskCardTitle, selected && styles.taskCardTitleSelected]}>
+            {language === 'en' ? task.titleEn : task.title}
+          </Text>
+          {selected && !isExpanded && (
+            <Text style={[styles.taskDetailHint, hasDetails && { color: '#3498DB' }]}>
+              {hasDetails ? `✏️ ${language === 'en' ? 'has details' : 'יש פרטים'}` : `✏️ ${language === 'en' ? 'add details' : 'הוסף פרטים'}`}
+            </Text>
+          )}
+          {selected && <Text style={styles.taskCardCheck}>✓</Text>}
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.taskDetailPanel}>
+            <Text style={styles.taskDetailPanelTitle}>
+              {task.icon} {language === 'en' ? task.titleEn : task.title} — {language === 'en' ? 'Specific Instructions' : 'הוראות ספציפיות'}
+            </Text>
+            <TextInput
+              style={styles.taskDetailNoteInput}
+              placeholder={language === 'en' ? 'e.g. trash from all rooms including kitchen and bathroom...' : 'למשל: אשפה מכל החדרים כולל מטבח ואמבטיה...'}
+              value={note}
+              onChangeText={(v) => setTaskNotes((prev) => ({ ...prev, [task.id]: v }))}
+              multiline
+              numberOfLines={3}
+              textAlign={isRTL ? 'right' : 'left'}
+            />
+
+            <Text style={styles.taskDetailPhotoLabel}>
+              {language === 'en' ? '📸 Reference photos (optional, up to 4)' : '📸 תמונות עזר (אופציונלי, עד 4)'}
+            </Text>
+            <View style={styles.taskDetailPhotoRow}>
+              {refPhotos.map((uri, idx) => (
+                <View key={idx} style={styles.refPhotoWrap}>
+                  <Image source={{ uri }} style={styles.refPhotoThumb} resizeMode="cover" />
+                  <TouchableOpacity style={styles.refPhotoRemove} onPress={() => removeRefPhoto(task.id, idx)}>
+                    <Text style={styles.refPhotoRemoveText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {refPhotos.length < 4 && (
+                <TouchableOpacity style={styles.refPhotoAdd} onPress={() => pickRefPhoto(task.id)}>
+                  <Text style={styles.refPhotoAddIcon}>+</Text>
+                  <Text style={styles.refPhotoAddText}>{language === 'en' ? 'Photo' : 'תמונה'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity style={styles.taskDetailDone} onPress={() => setExpandedTaskDetail(null)}>
+              <Text style={styles.taskDetailDoneText}>✓ {language === 'en' ? 'Done' : 'שמור'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
   };
 
   const choreTasks = taskPresets.filter((t) => t.category === 'chores');
@@ -444,22 +574,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.chores}</Text>
         <View style={styles.taskGrid}>
-          {choreTasks.map((task) => {
-            const selected = selectedTasks.includes(task.id);
-            return (
-              <TouchableOpacity
-                key={task.id}
-                style={[styles.taskCard, selected && styles.taskCardSelected]}
-                onPress={() => toggleTask(task.id)}
-              >
-                <Text style={styles.taskCardIcon}>{task.icon}</Text>
-                <Text style={[styles.taskCardTitle, selected && styles.taskCardTitleSelected]}>
-                  {language === 'en' ? task.titleEn : task.title}
-                </Text>
-                {selected && <Text style={styles.taskCardCheck}>✓</Text>}
-              </TouchableOpacity>
-            );
-          })}
+          {choreTasks.map((task) => renderTaskCard(task))}
         </View>
       </View>
 
@@ -525,20 +640,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
               );
             }
 
-            const selected = selectedTasks.includes(task.id);
-            return (
-              <TouchableOpacity
-                key={task.id}
-                style={[styles.taskCard, selected && styles.taskCardSelected]}
-                onPress={() => toggleTask(task.id)}
-              >
-                <Text style={styles.taskCardIcon}>{task.icon}</Text>
-                <Text style={[styles.taskCardTitle, selected && styles.taskCardTitleSelected]}>
-                  {language === 'en' ? task.titleEn : task.title}
-                </Text>
-                {selected && <Text style={styles.taskCardCheck}>✓</Text>}
-              </TouchableOpacity>
-            );
+            return renderTaskCard(task);
           })}
         </View>
       </View>
@@ -812,6 +914,29 @@ const styles = StyleSheet.create({
   taskCardTitle: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center' },
   taskCardTitleSelected: { color: '#27AE60' },
   taskCardCheck: { position: 'absolute', top: 6, left: 8, fontSize: 16, color: '#27AE60', fontWeight: 'bold' },
+  taskDetailHint: { fontSize: 10, color: '#95A5A6', marginTop: 3 },
+  taskCardWrap: { width: '47%' },
+  taskCardExpandedTop: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  taskDetailPanel: {
+    backgroundColor: '#FAFAFA', borderWidth: 2, borderTopWidth: 0, borderColor: '#27AE60',
+    borderBottomLeftRadius: 12, borderBottomRightRadius: 12, padding: 12, marginBottom: 4,
+  },
+  taskDetailPanelTitle: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', marginBottom: 8, textAlign: 'center' },
+  taskDetailNoteInput: {
+    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 8,
+    padding: 8, fontSize: 13, minHeight: 72, marginBottom: 10, textAlignVertical: 'top',
+  },
+  taskDetailPhotoLabel: { fontSize: 12, fontWeight: '600', color: '#2C3E50', marginBottom: 6 },
+  taskDetailPhotoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  refPhotoWrap: { position: 'relative' },
+  refPhotoThumb: { width: 56, height: 56, borderRadius: 8 },
+  refPhotoRemove: { position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
+  refPhotoRemoveText: { color: '#FFF', fontSize: 9, fontWeight: 'bold' },
+  refPhotoAdd: { width: 56, height: 56, borderRadius: 8, borderWidth: 1, borderColor: '#BDC3C7', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  refPhotoAddIcon: { fontSize: 20, color: '#7F8C8D' },
+  refPhotoAddText: { fontSize: 9, color: '#7F8C8D' },
+  taskDetailDone: { backgroundColor: '#27AE60', borderRadius: 8, padding: 8, alignItems: 'center' },
+  taskDetailDoneText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
 
   // No-phone duration picker
   noPhoneWrap: { width: '100%' },

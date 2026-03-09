@@ -220,6 +220,26 @@ export default function TasksListScreen({ navigation }: any) {
           <View style={styles.taskCard}>
             <Text style={styles.taskTitle}>{selectedTask.title}</Text>
             <Text style={styles.taskDescription}>{selectedTask.description}</Text>
+            {selectedTask.parentNote ? (
+              <View style={styles.parentNoteBox}>
+                <Text style={[styles.parentNoteLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  👨‍👩‍👧 {t.tasksList.parentInstructions || 'Parent instructions:'}
+                </Text>
+                <Text style={[styles.parentNoteText, { textAlign: isRTL ? 'right' : 'left' }]}>{selectedTask.parentNote}</Text>
+              </View>
+            ) : null}
+            {selectedTask.refPhotoUrls?.length > 0 && (
+              <View style={styles.refPhotosBox}>
+                <Text style={[styles.parentNoteLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  📸 {t.tasksList.referencePhotos || 'Reference photos:'}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {selectedTask.refPhotoUrls.map((url: string, i: number) => (
+                    <Image key={i} source={{ uri: url }} style={styles.refPhotoItem} resizeMode="cover" />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
             {selectedTask.homeworkPhotoUrl && (
               <View style={styles.hwPhotoContainer}>
                 <Text style={[styles.hwPhotoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
@@ -326,6 +346,9 @@ export default function TasksListScreen({ navigation }: any) {
             <View style={styles.taskInfo}>
               <Text style={styles.taskTitle}>{task.title}</Text>
               <Text style={styles.taskDescription}>{task.description}</Text>
+              {task.parentNote ? (
+                <Text style={styles.taskParentNotePreview} numberOfLines={1}>👨‍👩‍👧 {task.parentNote}</Text>
+              ) : null}
             </View>
             {task.homeworkPhotoUrl && (
               <Image source={{ uri: task.homeworkPhotoUrl }} style={styles.hwThumb} resizeMode="cover" />
@@ -440,6 +463,12 @@ const styles = StyleSheet.create({
   rejectionNote: { backgroundColor: '#FFE5E5', borderRadius: 10, padding: 12, marginTop: 10 },
   rejectionLabel: { fontSize: 13, fontWeight: 'bold', color: '#E74C3C', marginBottom: 4, textAlign: 'right' },
   rejectionText: { fontSize: 13, color: '#E74C3C', textAlign: 'right' },
+  parentNoteBox: { backgroundColor: '#EBF5FB', borderRadius: 10, padding: 10, marginTop: 10 },
+  parentNoteLabel: { fontSize: 12, fontWeight: 'bold', color: '#2980B9', marginBottom: 4 },
+  parentNoteText: { fontSize: 14, color: '#2C3E50', lineHeight: 20 },
+  refPhotosBox: { marginTop: 10 },
+  refPhotoItem: { width: 120, height: 120, borderRadius: 8, marginRight: 8 },
+  taskParentNotePreview: { fontSize: 11, color: '#3498DB', marginTop: 3 },
   existingPhotoWrap: { marginBottom: 12, backgroundColor: '#FFF9E6', borderRadius: 10, padding: 10 },
   existingPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#856404', marginBottom: 6 },
   existingPhotoHint: { fontSize: 11, color: '#B8860B', marginTop: 6, textAlign: 'center' },
