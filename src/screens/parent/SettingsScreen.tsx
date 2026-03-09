@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../utils/alert';
@@ -87,12 +87,16 @@ export default function SettingsScreen({ navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await updateDoc(doc(db, 'users', user!.uid), { linkedUserId: null });
+              await updateDoc(doc(db, 'users', user!.uid), {
+                linkedUserId: null,
+                selectedChildId: null,
+                linkedUserIds: linkedUserId ? arrayRemove(linkedUserId) : [],
+              });
               if (linkedUserId) {
                 await updateDoc(doc(db, 'users', linkedUserId), { linkedUserId: null });
               }
               showAlert(t.common.success, t.settings.unlinkSuccess, [
-                { text: t.common.ok, onPress: () => navigation.goBack() },
+                { text: t.common.ok, onPress: () => navigation.navigate('ParentHome') },
               ]);
             } catch (error) {
               showAlert(t.common.error, t.settings.errorUnlink);
@@ -179,12 +183,20 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={styles.childInfo}>
               <Text style={styles.childLabel}>{t.settings.connectedChild}</Text>
               <Text style={styles.childName}>{childName}</Text>
-              <TouchableOpacity
-                style={styles.unlinkButton}
-                onPress={handleUnlinkChild}
-              >
-                <Text style={styles.unlinkButtonText}>{t.settings.unlinkChild}</Text>
-              </TouchableOpacity>
+              <View style={styles.childButtons}>
+                <TouchableOpacity
+                  style={styles.unlinkButton}
+                  onPress={handleUnlinkChild}
+                >
+                  <Text style={styles.unlinkButtonText}>{t.settings.unlinkChild}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.addChildButton}
+                  onPress={() => navigation.navigate('LinkChild')}
+                >
+                  <Text style={styles.addChildButtonText}>{t.settings.addAnotherChild}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -416,7 +428,13 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginBottom: 12,
   },
+  childButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
   unlinkButton: {
+    flex: 1,
     backgroundColor: '#E74C3C',
     borderRadius: 8,
     padding: 10,
@@ -424,7 +442,19 @@ const styles = StyleSheet.create({
   },
   unlinkButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  addChildButton: {
+    flex: 1,
+    backgroundColor: '#3498DB',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+  },
+  addChildButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: 'bold',
   },
   noChildInfo: {

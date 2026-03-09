@@ -12,15 +12,17 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { verifyAndUseLinkingCode } from '../../utils/linkingCode';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function EnterLinkingCodeScreen({ navigation }: any) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const handleSubmit = async () => {
     if (!user || !code || code.length !== 6) {
-      showAlert('שגיאה', 'נא להזין קוד בן 6 ספרות');
+      showAlert(t.common.error, t.onboarding.errorCode);
       return;
     }
 
@@ -29,24 +31,22 @@ export default function EnterLinkingCodeScreen({ navigation }: any) {
       const result = await verifyAndUseLinkingCode(code, user.uid);
 
       if (!result.success) {
-        showAlert('שגיאה', result.error || 'קוד לא תקין');
+        showAlert(t.common.error, result.error || t.onboarding.errorCode);
         setLoading(false);
         return;
       }
 
-      // Link child to parent (child updates their own doc — allowed by rules)
       await updateDoc(doc(db, 'users', user.uid), {
         linkedUserId: result.parentId,
       });
-      // Parent picks up the link via the pending signal in AuthContext
 
       showAlert(
-        'הצלחה! 🎉',
-        'חוברת בהצלחה להורה שלך!',
-        [{ text: 'אישור', onPress: () => navigation.replace('ChildFlow') }]
+        t.onboarding.welcomeTitle,
+        t.childHome.connectParentBtn,
+        [{ text: t.common.ok, onPress: () => navigation.replace('ChildHome') }]
       );
     } catch (error: any) {
-      showAlert('שגיאה', 'משהו השתבש. נסה שוב');
+      showAlert(t.common.error, t.onboarding.errorGeneral);
     } finally {
       setLoading(false);
     }
@@ -54,10 +54,8 @@ export default function EnterLinkingCodeScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>חיבור להורה</Text>
-      <Text style={styles.description}>
-        הזן את הקוד בן 6 הספרות שקיבלת מההורה שלך
-      </Text>
+      <Text style={styles.title}>{t.linkChild.title}</Text>
+      <Text style={styles.description}>{t.onboarding.step1Hint}</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -79,15 +77,15 @@ export default function EnterLinkingCodeScreen({ navigation }: any) {
         {loading ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={styles.submitButtonText}>התחבר</Text>
+          <Text style={styles.submitButtonText}>{t.childHome.connectParentBtn}</Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.skipButton}
-        onPress={() => navigation.replace('ChildFlow')}
+        onPress={() => navigation.replace('ChildHome')}
       >
-        <Text style={styles.skipButtonText}>דלג לעכשיו</Text>
+        <Text style={styles.skipButtonText}>{t.common.back}</Text>
       </TouchableOpacity>
     </View>
   );

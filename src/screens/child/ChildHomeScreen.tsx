@@ -104,6 +104,30 @@ export default function ChildHomeScreen({ navigation }: any) {
     }
   };
 
+  if (!linkedUserId) {
+    return (
+      <LinearGradient colors={['#c0392b', '#e74c3c', '#e67e22']} style={styles.fullScreen}>
+        <ScrollView contentContainerStyle={styles.freedomContainer}>
+          <Text style={styles.freedomEmoji}>🔗</Text>
+          <Text style={styles.freedomTitle}>{t.childHome.noParentTitle}</Text>
+          <Text style={styles.freedomSubtitle}>{t.childHome.noParentDesc}</Text>
+          <TouchableOpacity
+            style={styles.badgesButton}
+            onPress={() => navigation.navigate('EnterLinkingCode')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={['#27AE60', '#2ECC71']} style={styles.badgesButtonGradient}>
+              <Text style={styles.badgesButtonText}>{t.childHome.connectParentBtn}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutBtnText}>{t.childHome.logoutBtn}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
+
   if (!isInPunishment) {
     return (
       <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.fullScreen}>
