@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { C, R, R_LG, shadow } from '../../theme';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -46,7 +47,7 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.gradient}>
+    <View style={styles.gradient}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -141,17 +142,16 @@ export default function LoginScreen({ navigation }: any) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
+    backgroundColor: C.bg,
   },
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -161,146 +161,154 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 36,
   },
   logo: {
-    fontSize: 60,
-    marginBottom: 12,
+    fontSize: 56,
+    marginBottom: 16,
   },
   appName: {
-    fontSize: 34,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 30,
+    fontWeight: '700',
+    color: C.text,
+    letterSpacing: 0.4,
     marginBottom: 6,
   },
   tagline: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 15,
+    color: C.textMed,
+    letterSpacing: 0.2,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 24,
+    backgroundColor: C.surface,
+    borderRadius: R_LG,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    marginBottom: 24,
+    borderColor: C.border,
+    marginBottom: 16,
+    ...shadow,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 14,
+    backgroundColor: C.surface2,
+    borderRadius: R,
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 12,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: C.text,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: C.border,
   },
   loginButtonWrapper: {
-    borderRadius: 14,
+    borderRadius: R,
     overflow: 'hidden',
-    marginTop: 6,
+    marginTop: 8,
   },
   loginButton: {
-    padding: 18,
+    padding: 17,
     alignItems: 'center',
   },
   loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: C.text,
+    fontSize: 16,
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 18,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: C.border,
   },
   dividerText: {
-    marginHorizontal: 16,
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 14,
+    marginHorizontal: 14,
+    color: C.textLow,
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: C.surface2,
+    borderRadius: R,
+    padding: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: C.borderStrong,
     gap: 12,
   },
   googleLogo: {
-    width: 26,
-    height: 26,
-    borderRadius: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 4,
     backgroundColor: '#4285F4',
     alignItems: 'center',
     justifyContent: 'center',
   },
   googleLogoText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: C.text,
+    fontSize: 14,
+    fontWeight: '700',
   },
   googleButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: C.text,
+    fontSize: 15,
     fontWeight: '600',
   },
   signupLink: {
-    marginTop: 20,
+    marginTop: 18,
     alignItems: 'center',
   },
   signupLinkText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.55)',
+    fontSize: 14,
+    color: C.textMed,
   },
   signupLinkBold: {
-    fontWeight: 'bold',
-    color: '#8E54E9',
+    fontWeight: '700',
+    color: C.accent,
   },
   childBox: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: C.surface,
+    borderRadius: R_LG,
+    padding: 22,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(247,151,30,0.3)',
+    borderColor: 'rgba(251,191,36,0.2)',
+    ...shadow,
   },
   childBoxIcon: {
-    fontSize: 36,
+    fontSize: 32,
     marginBottom: 8,
   },
   childBoxTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffd200',
+    fontSize: 18,
+    fontWeight: '700',
+    color: C.warning,
     marginBottom: 4,
+    letterSpacing: 0.2,
   },
   childBoxDesc: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    color: C.textMed,
     marginBottom: 16,
+    textAlign: 'center',
   },
   childButton: {
     width: '100%',
-    borderRadius: 14,
+    borderRadius: R,
     overflow: 'hidden',
   },
   childButtonGradient: {
-    padding: 16,
+    padding: 15,
     alignItems: 'center',
   },
   childButtonText: {
-    color: '#1a1a2e',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#0A0C17',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

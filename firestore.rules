@@ -19,11 +19,9 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
 
-    // Linking codes - parents can create, children can read
+    // Linking codes - any authenticated user can create/read/update/delete
     match /linkingCodes/{code} {
-      allow create: if isSignedIn();
-      allow read: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow read, write: if isSignedIn();
     }
 
     // Punishments - parents can create/update, children can read

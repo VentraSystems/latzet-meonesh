@@ -8,7 +8,7 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { UserRole } from '../types';
 import { useNotifications } from '../hooks/useNotifications';
@@ -99,6 +99,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (unsubscribeDoc) unsubscribeDoc();
     };
   }, []);
+
+  // Listen for pending child-link signals (child wrote pending_{parentId}, we process it)
+  useEffect(() => {
+    if (!user) return;
+
+    const pendingRef = doc(db, 'linkingCodes', `pending_${user.uid}`);
+    const unsubscribe = onSnapshot(pendingRef, async (pendingDoc) => {
+      if (pendingDoc.exists()) {
+        const { childId } = pendingDoc.data();
+        try {
+          await updateDoc(doc(db, 'users', user.uid), {
+            linkedUserIds: arrayUnion(childId),
+            linkedUserId: childId,
+            selectedChildId: childId,
+          });
+          await deleteDoc(pendingRef);
+        } catch (err) {
+          console.error('Failed to process pending child link:', err);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   useEffect(() => {
     if (notificationError) console.error('Notification error:', notificationError);

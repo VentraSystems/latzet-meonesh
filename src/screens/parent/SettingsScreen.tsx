@@ -16,23 +16,21 @@ import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function SettingsScreen({ navigation }: any) {
-  const { user, logout, linkedUserId } = useAuth();
+  const { user, logout, linkedUserId, linkedUserIds, setSelectedChild } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const [parentName, setParentName] = useState('');
-  const [childName, setChildName] = useState('');
   const [parentEmail, setParentEmail] = useState('');
+  const [childNames, setChildNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   useEffect(() => {
     loadUserData();
-  }, []);
+  }, [linkedUserIds.join(',')]);
 
   const loadUserData = async () => {
     if (!user) return;
-
     try {
-      // Get parent data
       const parentDoc = await getDoc(doc(db, 'users', user.uid));
       if (parentDoc.exists()) {
         const parentData = parentDoc.data();
@@ -40,14 +38,17 @@ export default function SettingsScreen({ navigation }: any) {
         setParentEmail(parentData.email || '');
       }
 
-      // Get child data if linked
-      if (linkedUserId) {
-        const childDoc = await getDoc(doc(db, 'users', linkedUserId));
-        if (childDoc.exists()) {
-          const childData = childDoc.data();
-          setChildName(childData.name || '');
-        }
-      }
+      // Load all linked children names
+      const names: Record<string, string> = {};
+      await Promise.all(
+        linkedUserIds.map(async (childId) => {
+          const childDoc = await getDoc(doc(db, 'users', childId));
+          if (childDoc.exists()) {
+            names[childId] = childDoc.data().name || '';
+          }
+        })
+      );
+      setChildNames(names);
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -76,10 +77,11 @@ export default function SettingsScreen({ navigation }: any) {
     );
   };
 
-  const handleUnlinkChild = () => {
+  const handleUnlinkChild = (childId: string) => {
+    const name = childNames[childId] || '';
     showAlert(
       t.settings.unlinkConfirmTitle,
-      t.settings.unlinkConfirmMsg.replace('{name}', childName),
+      t.settings.unlinkConfirmMsg.replace('{name}', name),
       [
         { text: t.settings.cancelBtn, style: 'cancel' },
         {
@@ -87,14 +89,13 @@ export default function SettingsScreen({ navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
+              const remainingIds = linkedUserIds.filter((id) => id !== childId);
               await updateDoc(doc(db, 'users', user!.uid), {
-                linkedUserId: null,
-                selectedChildId: null,
-                linkedUserIds: linkedUserId ? arrayRemove(linkedUserId) : [],
+                linkedUserIds: arrayRemove(childId),
+                linkedUserId: remainingIds[0] || null,
+                selectedChildId: remainingIds[0] || null,
               });
-              if (linkedUserId) {
-                await updateDoc(doc(db, 'users', linkedUserId), { linkedUserId: null });
-              }
+              await updateDoc(doc(db, 'users', childId), { linkedUserId: null });
               showAlert(t.common.success, t.settings.unlinkSuccess, [
                 { text: t.common.ok, onPress: () => navigation.navigate('ParentHome') },
               ]);
@@ -179,28 +180,40 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
           </View>
 
-          {linkedUserId && childName && (
-            <View style={styles.childInfo}>
+          {linkedUserIds.length > 0 ? (
+            <View style={styles.childrenList}>
               <Text style={styles.childLabel}>{t.settings.connectedChild}</Text>
-              <Text style={styles.childName}>{childName}</Text>
-              <View style={styles.childButtons}>
-                <TouchableOpacity
-                  style={styles.unlinkButton}
-                  onPress={handleUnlinkChild}
-                >
-                  <Text style={styles.unlinkButtonText}>{t.settings.unlinkChild}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.addChildButton}
-                  onPress={() => navigation.navigate('LinkChild')}
-                >
-                  <Text style={styles.addChildButtonText}>{t.settings.addAnotherChild}</Text>
-                </TouchableOpacity>
-              </View>
+              {linkedUserIds.map((childId) => (
+                <View key={childId} style={styles.childRow}>
+                  <View style={styles.childRowLeft}>
+                    <View style={[styles.childAvatar, childId === linkedUserId && styles.childAvatarActive]}>
+                      <Text style={styles.childAvatarText}>
+                        {(childNames[childId] || '?').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.childName}>{childNames[childId] || '...'}</Text>
+                      {childId === linkedUserId && (
+                        <Text style={styles.activeLabel}>● Active</Text>
+                      )}
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.unlinkButton}
+                    onPress={() => handleUnlinkChild(childId)}
+                  >
+                    <Text style={styles.unlinkButtonText}>{t.settings.unlinkChild}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={styles.addChildButton}
+                onPress={() => navigation.navigate('LinkChild')}
+              >
+                <Text style={styles.addChildButtonText}>{t.settings.addAnotherChild}</Text>
+              </TouchableOpacity>
             </View>
-          )}
-
-          {!linkedUserId && (
+          ) : (
             <View style={styles.noChildInfo}>
               <Text style={styles.noChildText}>{t.settings.noChild}</Text>
               <TouchableOpacity
@@ -409,48 +422,79 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  childInfo: {
+  childrenList: {
     backgroundColor: '#E8F8F5',
     borderRadius: 12,
     padding: 16,
     marginTop: 12,
+    gap: 10,
   },
   childLabel: {
     fontSize: 14,
     color: '#16A085',
-    marginBottom: 6,
+    marginBottom: 4,
     textAlign: 'right',
+    fontWeight: '600',
+  },
+  childRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+  },
+  childRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  childAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#BDC3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  childAvatarActive: {
+    backgroundColor: '#27AE60',
+  },
+  childAvatarText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   childName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
-    color: '#27AE60',
-    textAlign: 'right',
-    marginBottom: 12,
+    color: '#2C3E50',
   },
-  childButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
+  activeLabel: {
+    fontSize: 11,
+    color: '#27AE60',
+    fontWeight: '600',
+    marginTop: 2,
   },
   unlinkButton: {
-    flex: 1,
     backgroundColor: '#E74C3C',
     borderRadius: 8,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     alignItems: 'center',
   },
   unlinkButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   addChildButton: {
-    flex: 1,
     backgroundColor: '#3498DB',
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
+    marginTop: 4,
   },
   addChildButtonText: {
     color: '#FFFFFF',

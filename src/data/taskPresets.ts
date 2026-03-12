@@ -86,6 +86,16 @@ export const taskPresets: TaskPreset[] = [
     type: 'task',
     category: 'chores',
   },
+  {
+    id: 'walk-dog',
+    title: 'הליכה עם הכלב',
+    titleEn: 'Walk the Dog',
+    description: 'לצאת להליכה עם הכלב לפחות 15 דקות',
+    descriptionEn: 'Take the dog for a walk for at least 15 minutes',
+    icon: '🐕',
+    type: 'task',
+    category: 'chores',
+  },
 
   // Homework
   {

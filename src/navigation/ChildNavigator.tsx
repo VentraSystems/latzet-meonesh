@@ -6,6 +6,8 @@ import TasksListScreen from '../screens/Child/TasksListScreen';
 import QuizScreen from '../screens/Child/QuizScreen';
 import FreedomScreen from '../screens/Child/FreedomScreen';
 import BadgesScreen from '../screens/Child/BadgesScreen';
+import MiniGameScreen from '../screens/Child/MiniGameScreen';
+import ChildWalletScreen from '../screens/Child/ChildWalletScreen';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const Stack = createNativeStackNavigator();
@@ -20,6 +22,8 @@ export default function ChildNavigator() {
       <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: t.quiz.results, headerTitleAlign: 'center' }} />
       <Stack.Screen name="Freedom" component={FreedomScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Badges" component={BadgesScreen} options={{ title: t.badges.title, headerTitleAlign: 'center' }} />
+      <Stack.Screen name="MiniGame" component={MiniGameScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Wallet" component={ChildWalletScreen} options={{ title: '💰 My Wallet', headerTitleAlign: 'center' }} />
     </Stack.Navigator>
   );
 }

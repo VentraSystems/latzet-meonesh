@@ -97,7 +97,8 @@ const he: Translations = {
     pendingAlert1: '⏳ {n} משימה ממתינה לאישורך',
     pendingAlertN: '⏳ {n} משימות ממתינות לאישורך',
     freeMsg: 'הילד שלך חופשי כרגע!',
-    newPunishment: '➕ הגדר עונש חדש',
+    newPunishment: '➕ הגדר משימות חדשות',
+    history: '📋 היסטוריית משימות',
     approveTasks: '✅ אשר משימות ({n})',
     reviewTasks: '📋 צפה בכל המשימות',
     reports: '📊 דוחות וניתוח',
@@ -107,6 +108,12 @@ const he: Translations = {
     connectChild: 'חבר ילד עכשיו',
     footer: 'Made with ❤️ by Ventra Software Systems LTD',
     reconnectChild: 'חיבור / הוספת ילד',
+    myChildren: 'הילדים שלי',
+    unlockPhone: '🔓 שחרר טלפון עכשיו',
+    assignChallenge: '➕ הגדר אתגר',
+    addChild: '+ הוסף ילד',
+    challengeComplete: '!🎉 האתגר הושלם',
+    walletRewards: 'ארנק ופרסים',
   },
 
   childHome: {
@@ -338,6 +345,16 @@ const he: Translations = {
     insightGood: '{name} בדרך הנכונה! המשך לחזק את הלמידה 💪',
     insightNeedsHelp: '{name} זקוק לחיזוק. נסה חידונים קלים יותר 📖',
     noData: 'חבר ילד כדי לראות נתונים',
+  },
+
+  rejectModal: {
+    title: 'דחיית משימה',
+    description: 'למה אתה דוחה את המשימה?',
+    hint: '(הילד יראה את ההודעה הזו)',
+    placeholder: 'לדוגמה: החדר לא נקי מספיק',
+    defaultReason: 'המשימה לא בוצעה כראוי',
+    cancel: 'ביטול',
+    reject: 'דחה משימה',
   },
 };
 

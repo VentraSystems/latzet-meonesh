@@ -12,14 +12,16 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, addDoc, getDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../config/firebase';
+import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { taskPresets } from '../../data/taskPresets';
 import { notifyNewPunishment } from '../../utils/notifications';
 import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+
+const UPLOAD_API = 'https://escapechallenge.ventrasystems.com/api/upload-image';
 
 interface HomeworkTask {
   _id: string;
@@ -58,6 +60,7 @@ interface AiQuizConfig {
 
 export default function SetPunishmentScreen({ navigation }: any) {
   const [punishmentName, setPunishmentName] = useState('');
+  const [nameEditedByUser, setNameEditedByUser] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [customTask, setCustomTask] = useState('');
   const [loading, setLoading] = useState(false);
@@ -96,6 +99,9 @@ export default function SetPunishmentScreen({ navigation }: any) {
   // Temporary config while selecting
   const [tempDifficulty, setTempDifficulty] = useState('easy');
   const [tempGrade, setTempGrade] = useState(4);
+
+  // Mini games
+  const [miniGames, setMiniGames] = useState<{ gameType: string; difficulty: string }[]>([]);
 
   const { user, linkedUserId } = useAuth();
   const { t, isRTL, language } = useLanguage();
@@ -208,22 +214,76 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
   const removeHomeworkTask = (id: string) => setHomeworkTasks((prev) => prev.filter((h) => h._id !== id));
 
-  const uploadHomeworkPhoto = (uri: string, tempId: string): Promise<string> =>
-    new Promise(async (resolve, reject) => {
-      try {
-        const blob = await (await fetch(uri)).blob();
-        const uploadTask = uploadBytesResumable(
-          ref(storage, `homework-photos/${user!.uid}/${tempId}/${Date.now()}.jpg`),
-          blob,
-          { contentType: 'image/jpeg' }
-        );
-        uploadTask.on('state_changed', null, reject, async () => {
-          resolve(await getDownloadURL(uploadTask.snapshot.ref));
-        });
-      } catch (e) { reject(e); }
+  const uploadPhoto = async (uri: string, filename?: string): Promise<string> => {
+    // Compress first
+    const compressed = await ImageManipulator.manipulateAsync(
+      uri, [], { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    const base64 = compressed.base64;
+    if (!base64) throw new Error('Failed to compress image');
+
+    const name = filename || `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    const resp = await fetch(UPLOAD_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64, filename: name }),
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'Upload failed');
+    return data.url;
+  };
+
+  const uploadHomeworkPhoto = (uri: string, tempId: string) =>
+    uploadPhoto(uri, `hw-${user!.uid}-${tempId}-${Date.now()}.jpg`);
+
+
+  const totalCount = selectedTasks.length + Object.keys(aiQuizzes).length + selectedSuggestionIds.length + homeworkTasks.length + miniGames.length + (noPhoneConfirmed !== null ? 1 : 0);
+
+  // Auto-fill challenge name from selected tasks
+  useEffect(() => {
+    if (nameEditedByUser) return;
+    const parts: string[] = [];
+
+    selectedTasks.forEach((id) => {
+      const preset = taskPresets.find((p) => p.id === id);
+      if (preset) parts.push(language === 'en' ? preset.titleEn : preset.title);
+      else if (id.startsWith('custom-')) parts.push(id.split('-').slice(2).join('-'));
     });
 
-  const totalCount = selectedTasks.length + Object.keys(aiQuizzes).length + selectedSuggestionIds.length + homeworkTasks.length;
+    selectedSuggestionIds.forEach((id) => {
+      const s = aiSuggestions.find((sg: any) => sg.id === id);
+      if (s) parts.push(language === 'en' ? (s.titleEn || s.title) : s.title);
+    });
+
+    Object.keys(aiQuizzes).forEach((subjectId) => {
+      const subject = AI_SUBJECTS.find((s) => s.id === subjectId);
+      if (subject) parts.push(language === 'en' ? `${subject.labelEn} Quiz` : `חידון ${subject.label}`);
+    });
+
+    miniGames.forEach(() => {
+      parts.push(language === 'en' ? 'Mini Game' : 'משחק');
+    });
+
+    homeworkTasks.forEach((hw) => {
+      parts.push(hw.title || (language === 'en' ? 'Homework' : 'שיעורי בית'));
+    });
+
+    if (noPhoneConfirmed !== null) {
+      parts.push(language === 'en' ? `No Phone — ${fmtDuration(noPhoneConfirmed)}` : `בלי טלפון — ${fmtDuration(noPhoneConfirmed)}`);
+    }
+
+    if (parts.length === 0) { setPunishmentName(''); return; }
+
+    let name: string;
+    if (parts.length === 1) {
+      name = parts[0];
+    } else if (parts.length <= 3) {
+      name = parts.join(' + ');
+    } else {
+      name = `${parts[0]} + ${parts.length - 1} ${language === 'en' ? 'more' : 'עוד'}`;
+    }
+    setPunishmentName(name);
+  }, [selectedTasks, aiQuizzes, miniGames, homeworkTasks, selectedSuggestionIds, noPhoneConfirmed, nameEditedByUser, language]);
 
   const createPunishment = async () => {
     if (!punishmentName.trim()) {
@@ -242,15 +302,22 @@ export default function SetPunishmentScreen({ navigation }: any) {
     setLoading(true);
 
     try {
-      // Upload homework photos
+      // Upload homework photos (skip photo on failure, don't block challenge creation)
       let homeworkWithUrls: (HomeworkTask & { photoUrl: string | null })[] = [];
       if (homeworkTasks.length > 0) {
         setLoadingMsg(language === 'en' ? 'Uploading homework photos...' : 'מעלה תמונות שיעורים...');
         homeworkWithUrls = await Promise.all(
-          homeworkTasks.map(async (hw) => ({
-            ...hw,
-            photoUrl: hw.photoUri ? await uploadHomeworkPhoto(hw.photoUri, hw._id) : null,
-          }))
+          homeworkTasks.map(async (hw) => {
+            let photoUrl: string | null = null;
+            if (hw.photoUri) {
+              try {
+                photoUrl = await uploadHomeworkPhoto(hw.photoUri, hw._id);
+              } catch (uploadErr: any) {
+                console.warn('Homework photo upload failed, skipping:', uploadErr?.message);
+              }
+            }
+            return { ...hw, photoUrl };
+          })
         );
       }
 
@@ -293,7 +360,11 @@ export default function SetPunishmentScreen({ navigation }: any) {
       await Promise.all(
         Object.entries(taskRefPhotos).map(async ([taskId, uris]) => {
           if (uris.length === 0) return;
-          uploadedRefPhotos[taskId] = await Promise.all(uris.map((uri, i) => uploadRefPhoto(uri, taskId, i)));
+          const urls = await Promise.all(uris.map(async (uri, i) => {
+            try { return await uploadRefPhoto(uri, taskId, i); }
+            catch (e: any) { console.warn('Ref photo upload failed, skipping:', e?.message); return null; }
+          }));
+          uploadedRefPhotos[taskId] = urls.filter(Boolean) as string[];
         })
       );
 
@@ -405,7 +476,22 @@ export default function SetPunishmentScreen({ navigation }: any) {
         ...(hw.photoUrl ? { homeworkPhotoUrl: hw.photoUrl } : {}),
       }));
 
-      const allTasks = [...presetTasks, ...aiTasks, ...suggestionTasks, ...hwTasksFinal];
+      // Build mini game tasks
+      const GAME_NAMES: Record<string, string> = { math_blitz: '⚡ Math Blitz', memory_sequence: '🧠 Memory Sequence' };
+      const miniGameTasks = miniGames.map((g, i) => ({
+        id: `minigame-${g.gameType}-${i}-${Date.now()}`,
+        title: language === 'en' ? `🎮 ${GAME_NAMES[g.gameType] || 'Mini Game'}` : `🎮 משחק — ${GAME_NAMES[g.gameType] || 'Mini Game'}`,
+        description: language === 'en'
+          ? `${g.difficulty.toUpperCase()} · Grade ${childGrade}`
+          : `${g.difficulty === 'easy' ? 'קל' : g.difficulty === 'medium' ? 'בינוני' : 'קשה'} · כיתה ${childGrade}`,
+        type: 'minigame',
+        gameType: g.gameType,
+        difficulty: g.difficulty,
+        childGrade,
+        status: 'pending',
+      }));
+
+      const allTasks = [...presetTasks, ...aiTasks, ...suggestionTasks, ...hwTasksFinal, ...miniGameTasks];
 
       const punishmentRef = await addDoc(collection(db, 'punishments'), {
         name: punishmentName,
@@ -453,19 +539,8 @@ export default function SetPunishmentScreen({ navigation }: any) {
     });
   };
 
-  const uploadRefPhoto = (uri: string, taskId: string, idx: number): Promise<string> =>
-    new Promise(async (resolve, reject) => {
-      try {
-        const blob = await (await fetch(uri)).blob();
-        const uploadTask = uploadBytesResumable(
-          ref(storage, `ref-photos/${user!.uid}/${taskId}/${idx}-${Date.now()}.jpg`),
-          blob, { contentType: 'image/jpeg' }
-        );
-        uploadTask.on('state_changed', null, reject, async () => {
-          resolve(await getDownloadURL(uploadTask.snapshot.ref));
-        });
-      } catch (e) { reject(e); }
-    });
+  const uploadRefPhoto = (uri: string, taskId: string, idx: number) =>
+    uploadPhoto(uri, `ref-${user!.uid}-${taskId}-${idx}-${Date.now()}.jpg`);
 
   const NO_PHONE_DURATIONS = [0.5, 1, 2, 3, 4, 6, 8, 12, 24];
 
@@ -594,7 +669,10 @@ export default function SetPunishmentScreen({ navigation }: any) {
           style={styles.input}
           placeholder={t.setPunishment.namePlaceholder}
           value={punishmentName}
-          onChangeText={setPunishmentName}
+          onChangeText={(text) => {
+            setPunishmentName(text);
+            setNameEditedByUser(text.length > 0);
+          }}
           textAlign={isRTL ? 'right' : 'left'}
         />
       </View>
@@ -605,6 +683,31 @@ export default function SetPunishmentScreen({ navigation }: any) {
           <Text style={styles.summaryText}>{t.setPunishment.selectedCount.replace('{n}', String(totalCount))}</Text>
         </View>
       )}
+
+      {/* Custom task */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.customTask}</Text>
+        <View style={styles.customTaskRow}>
+          <TouchableOpacity style={styles.addButton} onPress={addCustomTask}>
+            <Text style={styles.addButtonText}>{t.setPunishment.addCustom}</Text>
+          </TouchableOpacity>
+          <TextInput
+            style={styles.customInput}
+            placeholder={t.setPunishment.customPlaceholder}
+            value={customTask}
+            onChangeText={setCustomTask}
+            textAlign={isRTL ? 'right' : 'left'}
+          />
+        </View>
+        {selectedTasks.filter((id) => id.startsWith('custom-')).map((id) => (
+          <View key={id} style={styles.customChip}>
+            <TouchableOpacity onPress={() => toggleTask(id)}>
+              <Text style={styles.customChipRemove}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.customChipText}>{id.split('-').slice(2).join('-')}</Text>
+          </View>
+        ))}
+      </View>
 
       {/* Chores */}
       <View style={styles.section}>
@@ -879,29 +982,52 @@ export default function SetPunishmentScreen({ navigation }: any) {
         )}
       </View>
 
-      {/* Custom task */}
+      {/* Mini Games */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.customTask}</Text>
-        <View style={styles.customTaskRow}>
-          <TouchableOpacity style={styles.addButton} onPress={addCustomTask}>
-            <Text style={styles.addButtonText}>{t.setPunishment.addCustom}</Text>
-          </TouchableOpacity>
-          <TextInput
-            style={styles.customInput}
-            placeholder={t.setPunishment.customPlaceholder}
-            value={customTask}
-            onChangeText={setCustomTask}
-            textAlign={isRTL ? 'right' : 'left'}
-          />
-        </View>
-        {selectedTasks.filter((id) => id.startsWith('custom-')).map((id) => (
-          <View key={id} style={styles.customChip}>
-            <TouchableOpacity onPress={() => toggleTask(id)}>
-              <Text style={styles.customChipRemove}>✕</Text>
-            </TouchableOpacity>
-            <Text style={styles.customChipText}>{id.split('-').slice(2).join('-')}</Text>
-          </View>
-        ))}
+        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>🎮 {language === 'en' ? 'Arcade Brain Games' : 'משחקי מוח'}</Text>
+        <Text style={[styles.sectionHint, { textAlign: isRTL ? 'right' : 'left' }]}>
+          {language === 'en' ? 'Timed challenges adapted to your child\'s grade level' : 'אתגרים מתוזמנים מותאמים לכיתת הילד'}
+        </Text>
+        {[
+          { gameType: 'math_blitz', label: language === 'en' ? '⚡ Math Blitz' : '⚡ בליץ מתמטיקה', desc: language === 'en' ? '10 problems · 45 sec' : '10 שאלות · 45 שניות', color: '#E74C3C' },
+          { gameType: 'memory_sequence', label: language === 'en' ? '🧠 Memory Sequence' : '🧠 רצף זיכרון', desc: language === 'en' ? 'Simon Says style' : 'סיימון אומר', color: '#8E54E9' },
+        ].map((game) => {
+          const difficulties = ['easy', 'medium', 'hard'];
+          const added = miniGames.filter((g) => g.gameType === game.gameType);
+          return (
+            <View key={game.gameType} style={[styles.miniGameCard, { borderLeftColor: game.color }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={styles.miniGameTitle}>{game.label}</Text>
+                <Text style={styles.miniGameDesc}>{game.desc}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {difficulties.map((d) => {
+                  const isAdded = added.some((g) => g.difficulty === d);
+                  return (
+                    <TouchableOpacity
+                      key={d}
+                      style={[styles.diffChip, isAdded && { backgroundColor: game.color }]}
+                      onPress={() => {
+                        if (isAdded) {
+                          setMiniGames((prev) => prev.filter((g) => !(g.gameType === game.gameType && g.difficulty === d)));
+                        } else {
+                          setMiniGames((prev) => [...prev, { gameType: game.gameType, difficulty: d }]);
+                        }
+                      }}
+                    >
+                      <Text style={[styles.diffChipText, isAdded && { color: '#FFFFFF' }]}>
+                        {isAdded ? '✓ ' : ''}{d === 'easy' ? (language === 'en' ? 'Easy' : 'קל') : d === 'medium' ? (language === 'en' ? 'Medium' : 'בינוני') : (language === 'en' ? 'Hard' : 'קשה')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
+        {miniGames.length > 0 && (
+          <Text style={styles.miniGameCount}>✅ {miniGames.length} {language === 'en' ? 'game(s) added' : 'משחקים נוספו'}</Text>
+        )}
       </View>
 
       {/* Create button */}
@@ -935,6 +1061,12 @@ const styles = StyleSheet.create({
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 8 },
   sectionHint: { fontSize: 13, color: '#7F8C8D', textAlign: 'right', marginBottom: 12 },
+  miniGameCard: { backgroundColor: '#FAFAFA', borderRadius: 12, padding: 14, marginBottom: 10, borderLeftWidth: 4 },
+  miniGameTitle: { fontSize: 16, fontWeight: 'bold', color: '#2C3E50' },
+  miniGameDesc: { fontSize: 12, color: '#7F8C8D' },
+  diffChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#ECF0F1', borderWidth: 1, borderColor: '#BDC3C7' },
+  diffChipText: { fontSize: 13, fontWeight: '600', color: '#2C3E50' },
+  miniGameCount: { fontSize: 13, color: '#27AE60', fontWeight: 'bold', textAlign: 'center', marginTop: 8 },
   input: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, fontSize: 16, borderWidth: 1, borderColor: '#E0E0E0' },
   summaryBadge: { backgroundColor: '#27AE60', borderRadius: 20, padding: 10, alignItems: 'center', marginBottom: 16 },
   summaryText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 },

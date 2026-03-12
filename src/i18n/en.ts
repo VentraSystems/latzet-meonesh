@@ -95,7 +95,8 @@ const en = {
     pendingAlert1: '⏳ {n} task waiting for your approval',
     pendingAlertN: '⏳ {n} tasks waiting for your approval',
     freeMsg: 'Your child is free right now!',
-    newPunishment: '➕ Set New Challenge',
+    newPunishment: '➕ Set New Tasks',
+    history: '📋 Task History',
     approveTasks: '✅ Approve Tasks ({n})',
     reviewTasks: '📋 Review All Tasks',
     reports: '📊 Reports & Analytics',
@@ -105,6 +106,12 @@ const en = {
     connectChild: 'Connect Child Now',
     footer: 'Made with ❤️ by Ventra Software Systems LTD',
     reconnectChild: 'Reconnect / Add Child',
+    myChildren: 'My Children',
+    unlockPhone: '🔓 Unlock Phone Now',
+    assignChallenge: '➕ Assign Challenge',
+    addChild: '+ Add Child',
+    challengeComplete: '🎉 Challenge Done!',
+    walletRewards: 'Wallet & Rewards',
   },
 
   childHome: {
@@ -336,6 +343,16 @@ const en = {
     insightGood: '{name} is on track! Keep strengthening the learning 💪',
     insightNeedsHelp: '{name} needs some reinforcement. Try easier quizzes 📖',
     noData: 'Connect a child to see data',
+  },
+
+  rejectModal: {
+    title: 'Reject Task',
+    description: 'Why are you rejecting this task?',
+    hint: '(The child will see this message)',
+    placeholder: 'e.g. The room is not clean enough',
+    defaultReason: 'The task was not completed properly',
+    cancel: 'Cancel',
+    reject: 'Reject Task',
   },
 };
 

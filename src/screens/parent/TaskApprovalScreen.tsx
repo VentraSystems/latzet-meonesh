@@ -9,11 +9,12 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { notifyTaskApproved, notifyTaskRejected } from '../../utils/notifications';
 import { showAlert } from '../../utils/alert';
 import { awardPointsAndBadges, incrementCompletedPunishments, BADGES, POINTS_PER_TASK } from '../../utils/badges';
+import { awardCoins, DEFAULT_WALLET_CONFIG } from '../../utils/wallet';
 import RejectTaskModal from '../../components/RejectTaskModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -63,6 +64,22 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
                 task.quizScore
               );
 
+              // Award wallet coins
+              try {
+                const parentDoc = await getDoc(doc(db, 'users', punishment.parentId));
+                const walletConfig = parentDoc.exists()
+                  ? (parentDoc.data().walletConfig || DEFAULT_WALLET_CONFIG)
+                  : DEFAULT_WALLET_CONFIG;
+                if (walletConfig.enabled !== false) {
+                  const coins = task.type === 'quiz'
+                    ? (walletConfig.coinsPerQuiz || DEFAULT_WALLET_CONFIG.coinsPerQuiz)
+                    : task.type === 'minigame'
+                    ? (walletConfig.coinsPerGame || DEFAULT_WALLET_CONFIG.coinsPerGame)
+                    : (walletConfig.coinsPerTask || DEFAULT_WALLET_CONFIG.coinsPerTask);
+                  await awardCoins(punishment.childId, coins, `Task: ${task.title}`);
+                }
+              } catch (_) {}
+
               await notifyTaskApproved(punishment.childId, task.title, punishmentId, taskId);
 
               const allApproved = updatedTasks.every((t: any) => t.status === 'approved');
@@ -108,10 +125,10 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
   const handleRejectSubmit = async (reason: string) => {
     if (!selectedTaskId) return;
     try {
-      const task = punishment.tasks.find((t: any) => t.id === selectedTaskId);
-      const rejectionReason = reason || 'המשימה לא בוצעה כראוי';
-      const updatedTasks = punishment.tasks.map((t: any) =>
-        t.id === selectedTaskId ? { ...t, status: 'rejected', rejectedReason } : t
+      const task = punishment.tasks.find((tk: any) => tk.id === selectedTaskId);
+      const rejectionReason = reason || t.rejectModal.defaultReason;
+      const updatedTasks = punishment.tasks.map((task: any) =>
+        task.id === selectedTaskId ? { ...task, status: 'rejected', rejectedReason: rejectionReason } : task
       );
       await updateDoc(doc(db, 'punishments', punishmentId), { tasks: updatedTasks });
       await notifyTaskRejected(punishment.childId, task.title, rejectionReason, punishmentId, selectedTaskId);
@@ -202,15 +219,28 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
               </View>
             )}
 
-            {/* Photo Proof */}
+            {/* Homework reference photo (attached by parent) */}
+            {task.homeworkPhotoUrl && (
+              <View style={styles.photoContainer}>
+                <Text style={[styles.photoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>📄 Homework attachment:</Text>
+                <View style={styles.photoWrap}>
+                  <Image source={{ uri: task.homeworkPhotoUrl }} style={styles.photo} resizeMode="contain" />
+                </View>
+              </View>
+            )}
+
+            {/* Child proof photo */}
             {task.photoUrl && (
               <View style={styles.photoContainer}>
                 <Text style={[styles.photoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.taskApproval.photoProof}</Text>
-                <Image
-                  source={{ uri: task.photoUrl }}
-                  style={styles.photo}
-                  resizeMode="cover"
-                />
+                <View style={styles.photoWrap}>
+                  <Image
+                    source={{ uri: task.photoUrl }}
+                    style={styles.photo}
+                    resizeMode="cover"
+                    onError={(e) => console.warn('Photo load error:', e.nativeEvent)}
+                  />
+                </View>
               </View>
             )}
 
@@ -329,7 +359,8 @@ const styles = StyleSheet.create({
   noteText: { fontSize: 14, color: '#856404', textAlign: 'right' },
   photoContainer: { marginBottom: 12 },
   photoLabel: { fontSize: 13, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 8 },
-  photo: { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#F0F2FF' },
+  photoWrap: { width: '100%', minHeight: 200, backgroundColor: '#F0F2FF', borderRadius: 12, overflow: 'hidden' },
+  photo: { width: '100%', height: 220, borderRadius: 12, backgroundColor: '#F0F2FF' },
   quizScore: {
     borderRadius: 12,
     padding: 12,

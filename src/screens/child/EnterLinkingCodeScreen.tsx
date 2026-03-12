@@ -46,7 +46,8 @@ export default function EnterLinkingCodeScreen({ navigation }: any) {
         [{ text: t.common.ok, onPress: () => navigation.replace('ChildHome') }]
       );
     } catch (error: any) {
-      showAlert(t.common.error, t.onboarding.errorGeneral);
+      console.error('Linking code error:', error);
+      showAlert(t.common.error, error?.message || t.onboarding.errorGeneral);
     } finally {
       setLoading(false);
     }

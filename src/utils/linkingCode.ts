@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, deleteDoc, arrayUnion, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export const generateLinkingCode = (): string => {
@@ -40,12 +40,15 @@ export const verifyAndUseLinkingCode = async (
     return { success: false, error: 'הקוד פג תוקף' };
   }
 
-  // Delete the code and directly update the parent's linkedUserIds
+  // Delete the used code and write a pending-link signal for the parent to pick up.
+  // The child cannot write to the parent's users doc directly (security rules),
+  // so we write a signal in linkingCodes/pending_{parentId} and let the parent's
+  // AuthContext listener update its own document.
   await deleteDoc(doc(db, 'linkingCodes', code));
-  await updateDoc(doc(db, 'users', data.parentId), {
-    linkedUserIds: arrayUnion(childId),
-    linkedUserId: childId,       // backward compat
-    selectedChildId: childId,    // auto-select the newly linked child
+  await setDoc(doc(db, 'linkingCodes', `pending_${data.parentId}`), {
+    childId,
+    parentId: data.parentId,
+    createdAt: new Date(),
   });
 
   return { success: true, parentId: data.parentId };

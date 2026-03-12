@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../config/firebase';
+import { db } from '../../config/firebase';
+
+const UPLOAD_API = 'https://escapechallenge.ventrasystems.com/api/upload-image';
 import { useAuth } from '../../contexts/AuthContext';
 import { notifyTaskSubmitted } from '../../utils/notifications';
 import { showAlert } from '../../utils/alert';
@@ -23,6 +24,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 export default function TasksListScreen({ navigation }: any) {
   const { user } = useAuth();
   const [activePunishment, setActivePunishment] = useState<any>(null);
+  const [allActivePunishments, setAllActivePunishments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [taskNote, setTaskNote] = useState('');
@@ -32,18 +34,36 @@ export default function TasksListScreen({ navigation }: any) {
   const { t, isRTL, language } = useLanguage();
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'punishments'),
-      where('childId', '==', user!.uid),
-      where('status', '==', 'active')
-    );
+    // Single-field query only (avoids composite index requirement)
+    const q = query(collection(db, 'punishments'), where('childId', '==', user!.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const punishmentData = snapshot.docs[0].data();
-        setActivePunishment({ id: snapshot.docs[0].id, ...punishmentData });
+      const active = snapshot.docs
+        .filter((d) => d.data().status === 'active')
+        .sort((a, b) => {
+          const aTime = a.data().createdAt?.toMillis?.() || 0;
+          const bTime = b.data().createdAt?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
+      if (active.length > 0) {
+        const allDocs = active.map((d) => ({ id: d.id, ...d.data() }));
+        setAllActivePunishments(allDocs);
+        // Merge tasks from ALL active punishments — tag each task with its source punishmentId
+        const mergedTasks = active.flatMap((d) =>
+          (d.data().tasks || []).map((t: any) => ({ ...t, _punishmentId: d.id }))
+        );
+        setActivePunishment({
+          id: active[0].id,
+          ...active[0].data(),
+          tasks: mergedTasks,
+          parentId: active[0].data().parentId,
+        });
       } else {
+        setAllActivePunishments([]);
         setActivePunishment(null);
       }
+      setLoading(false);
+    }, (err) => {
+      console.error('TasksList punishment query error:', err);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -84,36 +104,47 @@ export default function TasksListScreen({ navigation }: any) {
     }
   };
 
-  const uploadPhoto = (uri: string, punishmentId: string, taskId: string): Promise<string> => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const storageRef = ref(storage, `task-photos/${punishmentId}/${taskId}/${Date.now()}.jpg`);
-        const uploadTask = uploadBytesResumable(storageRef, blob, { contentType: 'image/jpeg' });
-
-        uploadTask.on('state_changed',
-          (snapshot) => {
-            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setUploadProgress(pct);
-          },
-          (error) => reject(error),
-          async () => {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
-          }
-        );
-      } catch (e) {
-        reject(e);
-      }
+  const uploadPhoto = async (uri: string, punishmentId: string, taskId: string): Promise<string> => {
+    setUploadProgress(10);
+    // Convert to base64 via FileReader (works on web without CORS issues)
+    const blob = await fetch(uri).then((r) => r.blob());
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
+    setUploadProgress(50);
+
+    const filename = `task-${punishmentId}-${taskId}-${Date.now()}.jpg`;
+    const resp = await fetch(UPLOAD_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64, filename }),
+    });
+    setUploadProgress(90);
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'Upload failed');
+    setUploadProgress(100);
+    return data.url;
   };
 
   const handleTaskComplete = async (task: any) => {
+    const pId = task._punishmentId || activePunishment.id;
     if (task.type === 'quiz') {
       navigation.navigate('Quiz', {
         quiz: task.quizData,
-        punishmentId: activePunishment.id,
+        punishmentId: pId,
+        taskId: task.id,
+      });
+      return;
+    }
+    if (task.type === 'minigame') {
+      navigation.navigate('MiniGame', {
+        gameType: task.gameType,
+        difficulty: task.difficulty,
+        childGrade: task.childGrade || 4,
+        punishmentId: pId,
         taskId: task.id,
       });
       return;
@@ -130,34 +161,38 @@ export default function TasksListScreen({ navigation }: any) {
     setUploadProgress(0);
 
     try {
+      // Use the task's own punishmentId (handles multiple active punishments)
+      const pId = selectedTask._punishmentId || activePunishment.id;
+      const sourcePunishment = allActivePunishments.find((p) => p.id === pId) || activePunishment;
+
       let photoUrl: string | null = null;
       if (photoUri) {
-        photoUrl = await uploadPhoto(photoUri, activePunishment.id, selectedTask.id);
+        photoUrl = await uploadPhoto(photoUri, pId, selectedTask.id);
       }
 
-      const updatedTasks = activePunishment.tasks.map((t: any) =>
+      // Update only the tasks belonging to this specific punishment document
+      const updatedTasks = (sourcePunishment.tasks || []).map((t: any) =>
         t.id === selectedTask.id
           ? {
               ...t,
               status: 'submitted',
               submittedAt: new Date(),
               childNote: taskNote,
-              // Use new photo if uploaded, keep existing if not replaced
               photoUrl: photoUrl || t.photoUrl || null,
             }
           : t
       );
 
-      await updateDoc(doc(db, 'punishments', activePunishment.id), { tasks: updatedTasks });
+      await updateDoc(doc(db, 'punishments', pId), { tasks: updatedTasks });
 
       const childDoc = await getDoc(doc(db, 'users', user!.uid));
       const childName = childDoc.exists() ? childDoc.data().name : 'הילד';
 
       await notifyTaskSubmitted(
-        activePunishment.parentId,
+        sourcePunishment.parentId,
         childName,
         selectedTask.title,
-        activePunishment.id,
+        pId,
         selectedTask.id
       );
 
@@ -362,7 +397,7 @@ export default function TasksListScreen({ navigation }: any) {
             style={[styles.taskCard, task.status === 'approved' && styles.completedTaskCard]}
           >
             <View style={styles.taskHeader}>
-              <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : task.homeworkPhotoUrl ? '📚' : '📝'}</Text>
+              <Text style={styles.taskIcon}>{task.type === 'quiz' ? '🧠' : task.type === 'minigame' ? '🎮' : task.homeworkPhotoUrl ? '📚' : '📝'}</Text>
               <View style={styles.taskInfo}>
                 <Text style={styles.taskTitle}>{task.title}</Text>
                 <Text style={styles.taskDescription}>{task.description}</Text>
@@ -370,10 +405,25 @@ export default function TasksListScreen({ navigation }: any) {
                   <Text style={styles.taskParentNotePreview} numberOfLines={1}>👨‍👩‍👧 {task.parentNote}</Text>
                 ) : null}
               </View>
-              {task.homeworkPhotoUrl && (
-                <Image source={{ uri: task.homeworkPhotoUrl }} style={styles.hwThumb} resizeMode="cover" />
-              )}
             </View>
+
+            {/* Homework attachment — full width below header */}
+            {task.homeworkPhotoUrl && (
+              <TouchableOpacity
+                onPress={() => { if (typeof window !== 'undefined') window.open(task.homeworkPhotoUrl, '_blank'); }}
+                activeOpacity={0.85}
+              >
+                <View style={styles.hwPhotoFull}>
+                  <Text style={styles.hwPhotoLabel}>📎 {language === 'en' ? 'Tap to view homework attachment' : 'לחץ לצפייה בצילום שיעורי הבית'}</Text>
+                  <Image
+                    source={{ uri: task.homeworkPhotoUrl }}
+                    style={styles.hwPhotoImg}
+                    resizeMode="contain"
+                    onError={() => console.warn('hwPhoto failed:', task.homeworkPhotoUrl)}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
 
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
               <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
@@ -394,9 +444,12 @@ export default function TasksListScreen({ navigation }: any) {
                 onPress={() => handleTaskComplete(task)}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={['#c0392b', '#e74c3c']} style={styles.startButton}>
+                <LinearGradient
+                  colors={task.type === 'minigame' ? ['#8E54E9', '#4776E6'] : task.type === 'quiz' ? ['#8E54E9', '#4776E6'] : ['#c0392b', '#e74c3c']}
+                  style={styles.startButton}
+                >
                   <Text style={styles.startButtonText}>
-                    {task.type === 'quiz' ? t.tasksList.startQuiz : t.tasksList.markDone}
+                    {task.type === 'quiz' ? t.tasksList.startQuiz : task.type === 'minigame' ? '🎮 Play Game!' : t.tasksList.markDone}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -494,7 +547,9 @@ const styles = StyleSheet.create({
   existingPhotoWrap: { marginBottom: 12, backgroundColor: '#FFF9E6', borderRadius: 10, padding: 10 },
   existingPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#856404', marginBottom: 6 },
   existingPhotoHint: { fontSize: 11, color: '#B8860B', marginTop: 6, textAlign: 'center' },
-  hwThumb: { width: 52, height: 52, borderRadius: 8, marginLeft: 8 },
+  hwPhotoFull: { backgroundColor: '#EBF5FB', borderRadius: 10, padding: 10, marginTop: 8, marginBottom: 4 },
+  hwPhotoLabel: { fontSize: 12, color: '#2980B9', fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+  hwPhotoImg: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#D6EAF8' },
   hwPhotoContainer: { marginTop: 12, backgroundColor: '#F0F7FF', borderRadius: 10, padding: 10 },
   hwPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#3498DB', marginBottom: 8 },
   hwPhoto: { width: '100%', height: 220, borderRadius: 8, backgroundColor: '#E8F4FD' },

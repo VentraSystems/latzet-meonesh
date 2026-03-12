@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface RejectTaskModalProps {
   visible: boolean;
@@ -24,9 +25,10 @@ export default function RejectTaskModal({
   onSubmit,
 }: RejectTaskModalProps) {
   const [reason, setReason] = useState('');
+  const { t } = useLanguage();
 
   const handleSubmit = () => {
-    onSubmit(reason || 'המשימה לא בוצעה כראוי');
+    onSubmit(reason || t.rejectModal.defaultReason);
     setReason('');
   };
 
@@ -53,20 +55,19 @@ export default function RejectTaskModal({
         >
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modal}>
-              <Text style={styles.title}>דחיית משימה</Text>
+              <Text style={styles.title}>{t.rejectModal.title}</Text>
               <Text style={styles.taskTitle}>"{taskTitle}"</Text>
-              <Text style={styles.description}>למה אתה דוחה את המשימה?</Text>
-              <Text style={styles.hint}>(הילד יראה את ההודעה הזו)</Text>
+              <Text style={styles.description}>{t.rejectModal.description}</Text>
+              <Text style={styles.hint}>{t.rejectModal.hint}</Text>
 
               <TextInput
                 style={styles.input}
-                placeholder="לדוגמה: החדר לא נקי מספיק"
+                placeholder={t.rejectModal.placeholder}
                 placeholderTextColor="#BDC3C7"
                 value={reason}
                 onChangeText={setReason}
                 multiline
                 numberOfLines={3}
-                textAlign="right"
                 autoFocus
               />
 
@@ -75,13 +76,13 @@ export default function RejectTaskModal({
                   style={styles.cancelButton}
                   onPress={handleCancel}
                 >
-                  <Text style={styles.cancelButtonText}>ביטול</Text>
+                  <Text style={styles.cancelButtonText}>{t.rejectModal.cancel}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.rejectButton}
                   onPress={handleSubmit}
                 >
-                  <Text style={styles.rejectButtonText}>דחה משימה</Text>
+                  <Text style={styles.rejectButtonText}>{t.rejectModal.reject}</Text>
                 </TouchableOpacity>
               </View>
             </View>
