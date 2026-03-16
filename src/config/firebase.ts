@@ -1,43 +1,41 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getFirestore, enableNetwork } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import {
-  FIREBASE_API_KEY,
-  FIREBASE_AUTH_DOMAIN,
-  FIREBASE_PROJECT_ID,
-  FIREBASE_STORAGE_BUCKET,
-  FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_APP_ID,
-  FIREBASE_MEASUREMENT_ID,
-} from '@env';
 
-// Firebase configuration loaded from environment variables
-// These credentials are stored in .env file (which is NOT committed to Git for security)
 const firebaseConfig = {
-  apiKey: FIREBASE_API_KEY,
-  authDomain: FIREBASE_AUTH_DOMAIN,
-  projectId: FIREBASE_PROJECT_ID,
-  storageBucket: FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
-  appId: FIREBASE_APP_ID,
-  measurementId: FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyA_xT_8V7l07Itzm-JDyG42GVMOWqKDY2I",
+  authDomain: "latzet-meonesh-e1375.firebaseapp.com",
+  projectId: "latzet-meonesh-e1375",
+  storageBucket: "latzet-meonesh-e1375.firebasestorage.app",
+  messagingSenderId: "104592303789",
+  appId: "1:104592303789:web:52b94d924d3c92c4578824",
+  measurementId: "G-2DWXXNQ4QP",
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with platform-appropriate persistence
-export const auth = initializeAuth(app, {
-  persistence: Platform.OS === 'web'
-    ? browserLocalPersistence
-    : getReactNativePersistence(AsyncStorage)
-});
+// Web uses getAuth (supports signInWithPopup), native uses initializeAuth with AsyncStorage
+let auth: ReturnType<typeof getAuth>;
+if (Platform.OS === 'web') {
+  auth = getAuth(app);
+} else {
+  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+}
+export { auth };
 
 // Initialize Firestore
 export const db = getFirestore(app);
+
+// On web, explicitly enable network to avoid stuck-offline state
+if (Platform.OS === 'web') {
+  enableNetwork(db).catch(() => {});
+}
 
 // Initialize Storage
 export const storage = getStorage(app);

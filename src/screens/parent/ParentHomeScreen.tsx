@@ -103,7 +103,8 @@ export default function ParentHomeScreen({ navigation }: any) {
 
       {/* Child Cards */}
       <View style={styles.cardsContainer}>
-        {children.map((child) => {
+        {linkedUserIds.map((childId) => {
+          const child = children.find(c => c.id === childId) || { id: childId, name: '' };
           const punishment = allPunishments
             .filter((p) => p.childId === child.id)
             .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))[0] || null;
@@ -119,10 +120,10 @@ export default function ParentHomeScreen({ navigation }: any) {
               {/* Card Header Row */}
               <View style={styles.cardHeader}>
                 <View style={[styles.avatarCircle, isComplete && styles.avatarCircleComplete]}>
-                  <Text style={styles.avatarText}>{child.name.charAt(0).toUpperCase()}</Text>
+                  <Text style={styles.avatarText}>{child.name ? child.name.charAt(0).toUpperCase() : '?'}</Text>
                 </View>
                 <View style={styles.cardHeaderInfo}>
-                  <Text style={[styles.childName, { textAlign: isRTL ? 'right' : 'left' }]}>{child.name}</Text>
+                  <Text style={[styles.childName, { textAlign: isRTL ? 'right' : 'left' }]}>{child.name || '...'}</Text>
                   <View style={[
                     styles.statusPill,
                     isComplete ? styles.statusDone : punishment ? styles.statusActive : styles.statusFree,

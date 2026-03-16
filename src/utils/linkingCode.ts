@@ -5,7 +5,7 @@ export const generateLinkingCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-export const createLinkingCode = async (parentId: string): Promise<string> => {
+export const createLinkingCode = async (parentId: string, existingChildId?: string): Promise<string> => {
   const code = generateLinkingCode();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -13,6 +13,7 @@ export const createLinkingCode = async (parentId: string): Promise<string> => {
     parentId,
     expiresAt,
     used: false,
+    ...(existingChildId ? { existingChildId } : {}),
   });
 
   return code;
@@ -40,13 +41,12 @@ export const verifyAndUseLinkingCode = async (
     return { success: false, error: 'הקוד פג תוקף' };
   }
 
-  // Delete the used code and write a pending-link signal for the parent to pick up.
-  // The child cannot write to the parent's users doc directly (security rules),
-  // so we write a signal in linkingCodes/pending_{parentId} and let the parent's
-  // AuthContext listener update its own document.
+  // If this is a reconnect code, use the existing child ID so no duplicate is added
+  const effectiveChildId = data.existingChildId || childId;
+
   await deleteDoc(doc(db, 'linkingCodes', code));
   await setDoc(doc(db, 'linkingCodes', `pending_${data.parentId}`), {
-    childId,
+    childId: effectiveChildId,
     parentId: data.parentId,
     createdAt: new Date(),
   });

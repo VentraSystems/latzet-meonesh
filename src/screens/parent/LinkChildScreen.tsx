@@ -11,18 +11,20 @@ import { createLinkingCode } from '../../utils/linkingCode';
 import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-export default function LinkChildScreen({ navigation }: any) {
+export default function LinkChildScreen({ navigation, route }: any) {
   const [linkingCode, setLinkingCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { t } = useLanguage();
+  const existingChildId = route?.params?.existingChildId;
+  const childName = route?.params?.childName;
 
   const generateCode = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      const code = await createLinkingCode(user.uid);
+      const code = await createLinkingCode(user.uid, existingChildId);
       setLinkingCode(code);
     } catch (error: any) {
       showAlert(t.common.error, t.linkChild.errorGenerate);
@@ -33,8 +35,8 @@ export default function LinkChildScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t.linkChild.title}</Text>
-      <Text style={styles.description}>{t.linkChild.desc}</Text>
+      <Text style={styles.title}>{existingChildId ? `🔗 ${childName || t.linkChild.title}` : t.linkChild.title}</Text>
+      <Text style={styles.description}>{existingChildId ? `Generate a code for ${childName || 'this child'} to reconnect` : t.linkChild.desc}</Text>
 
       {!linkingCode ? (
         <TouchableOpacity

@@ -114,8 +114,29 @@ export default function SignUpScreen({ navigation }: any) {
             </View>
           </View>
 
-          {/* Form */}
-          <View style={styles.card}>
+          {/* Child: redirect to code entry */}
+          {role === 'child' && (
+            <View style={styles.card}>
+              <Text style={styles.childInfoText}>👶 Children join by entering the code their parent gives them — no email needed!</Text>
+              <TouchableOpacity
+                style={styles.signupButtonWrapper}
+                onPress={() => navigation.navigate('ChildOnboarding')}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#f7971e', '#ffd200']} style={styles.signupButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={[styles.signupButtonText, { color: '#1a1a2e' }]}>Enter Parent Code →</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.loginLinkText}>
+                  {t.signup.hasAccount} <Text style={styles.loginLinkBold}>{t.signup.loginLink}</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Parent: show full signup form */}
+          {role !== 'child' && <View style={styles.card}>
             <TextInput
               style={styles.input}
               placeholder={t.signup.fullName}
@@ -183,7 +204,7 @@ export default function SignUpScreen({ navigation }: any) {
                 {t.signup.hasAccount} <Text style={styles.loginLinkBold}>{t.signup.loginLink}</Text>
               </Text>
             </TouchableOpacity>
-          </View>
+          </View>}
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -353,5 +374,12 @@ const styles = StyleSheet.create({
   loginLinkBold: {
     fontWeight: 'bold',
     color: '#8E54E9',
+  },
+  childInfoText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
   },
 });

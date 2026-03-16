@@ -198,12 +198,20 @@ export default function SettingsScreen({ navigation }: any) {
                       )}
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={styles.unlinkButton}
-                    onPress={() => handleUnlinkChild(childId)}
-                  >
-                    <Text style={styles.unlinkButtonText}>{t.settings.unlinkChild}</Text>
-                  </TouchableOpacity>
+                  <View style={styles.childActions}>
+                    <TouchableOpacity
+                      style={styles.reconnectButton}
+                      onPress={() => navigation.navigate('LinkChild', { existingChildId: childId, childName: childNames[childId] || '' })}
+                    >
+                      <Text style={styles.reconnectButtonText}>🔗</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.unlinkButton}
+                      onPress={() => handleUnlinkChild(childId)}
+                    >
+                      <Text style={styles.unlinkButtonText}>{t.settings.unlinkChild}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
               <TouchableOpacity
@@ -476,6 +484,21 @@ const styles = StyleSheet.create({
     color: '#27AE60',
     fontWeight: '600',
     marginTop: 2,
+  },
+  childActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reconnectButton: {
+    backgroundColor: '#2ECC71',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    alignItems: 'center',
+  },
+  reconnectButtonText: {
+    fontSize: 14,
   },
   unlinkButton: {
     backgroundColor: '#E74C3C',

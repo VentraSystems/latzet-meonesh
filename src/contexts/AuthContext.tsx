@@ -7,11 +7,13 @@ import {
   User,
   GoogleAuthProvider,
   signInWithCredential,
+  signInWithPopup,
 } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, updateDoc, arrayUnion, deleteDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { UserRole } from '../types';
 import { useNotifications } from '../hooks/useNotifications';
+import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -73,19 +75,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }
 
       if (firebaseUser) {
-        unsubscribeDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (userDoc) => {
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setUserRole(userData.role as UserRole);
+        unsubscribeDoc = onSnapshot(
+          doc(db, 'users', firebaseUser.uid),
+          (userDoc) => {
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              setUserRole(userData.role as UserRole);
 
-            // Multi-child: support both old (linkedUserId) and new (linkedUserIds) format
-            const ids: string[] = userData.linkedUserIds || (userData.linkedUserId ? [userData.linkedUserId] : []);
-            setLinkedUserIds(ids);
-            // Selected child = explicit selection or first in list
-            setLinkedUserId(userData.selectedChildId || ids[0] || null);
+              // Multi-child: support both old (linkedUserId) and new (linkedUserIds) format
+              const ids: string[] = userData.linkedUserIds || (userData.linkedUserId ? [userData.linkedUserId] : []);
+              setLinkedUserIds(ids);
+              // Selected child = explicit selection or first in list
+              setLinkedUserId(userData.selectedChildId || ids[0] || null);
+            }
+            setLoading(false);
+          },
+          (error) => {
+            // Suppress offline errors silently — app will retry when connection restores
+            console.warn('Firestore snapshot error:', error.code);
+            setLoading(false);
           }
-          setLoading(false);
-        });
+        );
       } else {
         setUserRole(null);
         setLinkedUserId(null);
@@ -155,10 +165,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
-    if (!googleRequest) {
-      throw new Error('Google Sign-In is not configured. Please add OAuth client IDs.');
+    if (Platform.OS === 'web') {
+      try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const firebaseUser = result.user;
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (!userDoc.exists()) {
+          await setDoc(doc(db, 'users', firebaseUser.uid), {
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email,
+            role: 'parent',
+            createdAt: new Date(),
+            linkedUserId: null,
+            linkedUserIds: [],
+            totalPoints: 0,
+            badges: [],
+          });
+          // Set role immediately to avoid race condition where auth listener
+          // fires before Firestore snapshot sees the new doc
+          setUserRole('parent');
+        }
+      } catch (error: any) {
+        console.error('Google Sign-In Error:', error.code, error.message);
+        throw error;
+      }
+    } else {
+      // Native: use expo-auth-session
+      if (!googleRequest) {
+        throw new Error('Google Sign-In is not configured. Please add OAuth client IDs.');
+      }
+      await googlePromptAsync();
     }
-    await googlePromptAsync();
   };
 
   const logout = async () => {
