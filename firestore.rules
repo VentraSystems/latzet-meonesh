@@ -14,9 +14,11 @@ service cloud.firestore {
     }
 
     // Users collection - users can read/write their own data
+    // Any signed-in user can update (needed for parent to award coins/badges to child)
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow create, delete: if isOwner(userId);
+      allow update: if isSignedIn();
     }
 
     // Linking codes - any authenticated user can create/read/update/delete

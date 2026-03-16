@@ -1,13 +1,13 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ChildHomeScreen from '../screens/Child/ChildHomeScreen';
-import EnterLinkingCodeScreen from '../screens/Child/EnterLinkingCodeScreen';
-import TasksListScreen from '../screens/Child/TasksListScreen';
-import QuizScreen from '../screens/Child/QuizScreen';
-import FreedomScreen from '../screens/Child/FreedomScreen';
-import BadgesScreen from '../screens/Child/BadgesScreen';
-import MiniGameScreen from '../screens/Child/MiniGameScreen';
-import ChildWalletScreen from '../screens/Child/ChildWalletScreen';
+import ChildHomeScreen from '../screens/child/ChildHomeScreen';
+import EnterLinkingCodeScreen from '../screens/child/EnterLinkingCodeScreen';
+import TasksListScreen from '../screens/child/TasksListScreen';
+import QuizScreen from '../screens/child/QuizScreen';
+import FreedomScreen from '../screens/child/FreedomScreen';
+import BadgesScreen from '../screens/child/BadgesScreen';
+import MiniGameScreen from '../screens/child/MiniGameScreen';
+import ChildWalletScreen from '../screens/child/ChildWalletScreen';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const Stack = createNativeStackNavigator();

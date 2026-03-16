@@ -1,13 +1,13 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ParentHomeScreen from '../screens/Parent/ParentHomeScreen';
-import LinkChildScreen from '../screens/Parent/LinkChildScreen';
-import SetPunishmentScreen from '../screens/Parent/SetPunishmentScreen';
-import TaskApprovalScreen from '../screens/Parent/TaskApprovalScreen';
-import SettingsScreen from '../screens/Parent/SettingsScreen';
-import ParentAnalyticsScreen from '../screens/Parent/ParentAnalyticsScreen';
-import ParentWalletScreen from '../screens/Parent/ParentWalletScreen';
-import PunishmentHistoryScreen from '../screens/Parent/PunishmentHistoryScreen';
+import ParentHomeScreen from '../screens/parent/ParentHomeScreen';
+import LinkChildScreen from '../screens/parent/LinkChildScreen';
+import SetPunishmentScreen from '../screens/parent/SetPunishmentScreen';
+import TaskApprovalScreen from '../screens/parent/TaskApprovalScreen';
+import SettingsScreen from '../screens/parent/SettingsScreen';
+import ParentAnalyticsScreen from '../screens/parent/ParentAnalyticsScreen';
+import ParentWalletScreen from '../screens/parent/ParentWalletScreen';
+import PunishmentHistoryScreen from '../screens/parent/PunishmentHistoryScreen';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const Stack = createNativeStackNavigator();
