@@ -446,9 +446,9 @@
 
 ---
 
-## 🎯 WHERE WE ARE RIGHT NOW (Session 10 - Mar 16, 2026)
+## 🎯 WHERE WE ARE RIGHT NOW (Session 11 - Mar 17, 2026)
 
-### ✅ MAJOR UX OVERHAUL LIVE ON WEB!
+### ✅ SESSION 10 CHANGES FINALIZED & PUSHED TO GITHUB
 
 - ✅ Firebase wiped clean — fresh start with new test accounts
 - ✅ Multi-child dashboard — parent sees one card per child with real-time status
@@ -459,7 +459,12 @@
 - ✅ Autofill challenge name on SetPunishment screen
 - ✅ Firestore security rules fixed — parent can now award coins/badges to child
 - ✅ All screens wired into navigators and deployed to web
-- ✅ Code pushed to GitHub
+- ✅ Google Sign-In added
+- ✅ Reconnect child flow fixed
+- ✅ More tasks added to active challenge + language/UX fixes
+- ✅ expo-image-manipulator added as dependency
+- ✅ serviceAccountKey.json added to .gitignore (security fix)
+- ✅ All code pushed to GitHub (Session 11)
 
 **Both Google Play and Apple Developer accounts are under review (applied Feb 14-15, 2026).
 This is normal for new accounts and takes 24-48 hours (up to 1 week).
