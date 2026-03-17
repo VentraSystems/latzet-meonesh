@@ -1,356 +1,193 @@
-# לצאת מעונש - Project Roadmap
+# Escape Challenge — Project Roadmap
 
 ## 🎯 Project Overview
-**App Name:** לצאת מעונש (Get Out of Punishment)
-**Target Market:** Israeli parents and children
-**Core Concept:** Real-time synced Parent-Child app where children complete tasks to earn freedom from punishments
+**App Name:** Escape Challenge (לצאת מעונש)
+**Target Market:** Parents and children (Hebrew/English bilingual)
+**Core Concept:** Real-time synced Parent-Child app where children complete tasks to earn freedom from challenges/punishments
+**Live URL:** https://escapechallenge.ventrasystems.com
 
 ---
 
-## 📱 Phase 1: Foundation & Setup ✅ (COMPLETED)
-- [x] Environment setup (Node.js, npm, Expo CLI)
-- [x] Create Expo project with TypeScript
-- [x] Install dependencies (Firebase, React Navigation)
-- [x] Configure Hebrew RTL support
-- [x] Set up project structure
-- [x] Create navigation flows (Parent/Child)
-- [x] Build Role Selection screen
-- [x] Build Parent Home screen (mockup)
-- [x] Build Child Home screen (mockup)
-- [x] Firebase config placeholder
-- [x] Test with Expo Go on iPhone
+## ✅ Phase 1: Foundation & Setup — COMPLETED
+- [x] Environment setup (Node.js, Expo CLI, TypeScript)
+- [x] Firebase project configured (Auth + Firestore)
+- [x] React Navigation — Parent & Child navigator stacks
+- [x] Hebrew RTL + English LTR support
+- [x] Role selection screen (Parent / Child)
+- [x] Bilingual i18n system (`en.ts` / `he.ts`) with `useLanguage` hook
 
 ---
 
-## 🔥 Phase 2: Firebase Integration & Authentication
-**Estimated Time:** 1-2 days
-
-### Backend Setup
-- [ ] Create Firebase project
-- [ ] Enable Firebase Authentication (Email/Password)
-- [ ] Set up Firestore Database structure:
-  ```
-  users/
-    {userId}/
-      - role: 'parent' | 'child'
-      - name: string
-      - email: string
-      - linkedUserId: string (for parent-child connection)
-
-  punishments/
-    {punishmentId}/
-      - name: string
-      - parentId: string
-      - childId: string
-      - status: 'active' | 'completed'
-      - createdAt: timestamp
-      - completedAt: timestamp
-      - requiredTasksCount: number
-      - tasks: array
-
-  tasks/
-    {taskId}/
-      - punishmentId: string
-      - title: string
-      - description: string
-      - type: 'custom' | 'clean-room' | 'homework' | 'quiz'
-      - status: 'pending' | 'submitted' | 'approved' | 'rejected'
-      - submittedAt: timestamp
-      - approvedAt: timestamp
-      - childNote: string
-      - rejectedReason: string
-  ```
-- [ ] Configure Firestore security rules
-- [ ] Set up Firebase Cloud Messaging for push notifications
-
-### Frontend Implementation
-- [ ] Create authentication context/hook
-- [ ] Build Login screen (both roles)
-- [ ] Build Sign Up screen
-- [ ] Implement linking mechanism (Parent generates code → Child enters code)
-- [ ] Add Firebase real-time listeners
-- [ ] Create data management hooks (usePunishment, useTasks, etc.)
+## ✅ Phase 2: Authentication & Linking — COMPLETED
+- [x] Email/password login for parents
+- [x] Google Sign-In for parents
+- [x] Auto-generated child accounts (random credentials)
+- [x] 6-digit linking code — parent generates → child enters
+- [x] Child reconnect flow (re-link existing child)
+- [x] Multi-child support (parent linked to multiple children)
+- [x] Firestore security rules
+- [x] Auth context with `linkedUserIds` array
 
 ---
 
-## 👨‍👩‍👧‍👦 Phase 3: Parent App Screens
-**Estimated Time:** 2-3 days
+## ✅ Phase 3: Parent App — COMPLETED
 
-### Onboarding/Setup Screen
-- [ ] Create account form
-- [ ] Add child name and age
-- [ ] Generate linking code
-- [ ] Display code for child to enter
-- [ ] Confirmation screen when child links
+### Home Dashboard
+- [x] Multi-child cards — one card per linked child
+- [x] Per-child progress bar, task stats (completed / total / pending)
+- [x] Status pills: Free / In Challenge / Challenge Complete
+- [x] Pending approval alert banner with count
+- [x] Dynamic action buttons: Assign Challenge / Approve Tasks / Review / Unlock Phone
+- [x] **➕ Add More Tasks button** — add tasks to an active challenge without creating a new one
+- [x] Settings accessible even when no child connected
+- [x] Reports & Analytics, Wallet & Rewards, Add Child shortcuts
 
-### Home Screen (Enhanced)
-- [x] Status display (mockup done)
-- [ ] Connect to real Firebase data
-- [ ] Real-time updates when child submits tasks
-- [ ] Push notification badge
-- [ ] Pull-to-refresh
-
-### Set Punishment Screen
-- [ ] Punishment name input
-- [ ] Task preset library:
-  - ניקיון חדר (Clean room)
-  - שיעורי בית (Homework)
-  - חידון (Quiz)
-  - עזרה בבית (Help at home)
-  - קריאת ספר (Read a book)
-- [ ] Add custom task button
-- [ ] Task list with drag-to-reorder
-- [ ] Set required tasks count (or all)
-- [ ] Confirmation dialog
-- [ ] Send to Firestore → instant sync to child
+### Set Challenge Screen
+- [x] Challenge name input with **AI autofill** (auto-generates name from selected tasks)
+- [x] Preset task library: Household Chores, Behavior tasks
+- [x] Custom task input with optional photo
+- [x] **AI Quiz generation** — select subject + difficulty + grade, generates 5-question quiz via API
+- [x] **AI task suggestions** — "Surprise Me" generates 6 personalized tasks
+- [x] **Homework assignment tasks** — attach photo of assignment sheet
+- [x] **Mini-games** — Math Blitz, Memory Sequence with difficulty/grade settings
+- [x] Per-task details: parent notes + up to 4 reference photos
+- [x] Daily repeat option (task repeats N days, unlocks sequentially)
+- [x] No-phone duration picker (minutes/hours)
+- [x] **Add to existing challenge mode** — hides name field, uses `arrayUnion` to append tasks
 
 ### Task Approval Screen
-- [ ] List of pending tasks
-- [ ] Task detail view
-- [ ] View child's note/photo (if any)
-- [ ] Approve button → updates Firestore
-- [ ] Reject button → add reason
-- [ ] Real-time counter update
+- [x] Tabs: "Needs Approval" / "Completed"
+- [x] Child's submitted note visible
+- [x] Homework attachment photo viewable
+- [x] Approve / Reject buttons with confirmation
+- [x] Atomic Firestore write (single `updateDoc`) — fixes race condition where challenge appeared active-but-complete
+- [x] All labels fully translated (no hardcoded Hebrew)
 
 ### Settings Screen
-- [ ] Parent profile
-- [ ] Manage child profiles
-- [ ] Notification preferences
-- [ ] App language (Hebrew/English)
-- [ ] About & Help
-- [ ] Logout
+- [x] Profile info, connected children list
+- [x] Disconnect child
+- [x] Language switcher (English / Hebrew)
+- [x] Push notification toggle
+
+### Other Parent Screens
+- [x] Link/Reconnect Child screen
+- [x] Analytics & Reports screen
+- [x] Wallet & Rewards screen
+- [x] Punishment History screen
 
 ---
 
-## 👶 Phase 4: Child App Screens
-**Estimated Time:** 2-3 days
+## ✅ Phase 4: Child App — COMPLETED
 
-### Home/Lock Screen (Enhanced)
-- [x] Punishment display (mockup done)
-- [ ] Connect to real Firebase data
-- [ ] Real-time progress updates
-- [ ] Motivational messages
-- [ ] Animated progress bar
-- [ ] Pull-to-refresh
+### Home Screen
+- [x] Real-time challenge display (name, progress, task count)
+- [x] Progress bar + "X more tasks and you are free!"
+- [x] Stars ⭐ and trophy 🏆 counters in header
+- [x] Task summary cards with status icons
+- [x] Freedom state ("You are completely free! 🌟")
 
-### Tasks Screen
-- [ ] List all assigned tasks
-- [ ] Filter by status (pending/submitted/approved/rejected)
-- [ ] Task detail modal
-- [ ] Mark task as complete
-- [ ] Add note/comment
-- [ ] Upload photo (optional)
-- [ ] Submit button → Firestore + notify parent
+### Tasks List Screen
+- [x] Full task list with status labels (Waiting / Waiting for approval ⏳ / Approved ✅ / Rejected ❌)
+- [x] "Mark as done ✓" submit flow with optional note + proof photo
+- [x] Photo upload with compression (ImageManipulator)
+- [x] Edit/resubmit submitted tasks
+- [x] **Retry rejected quiz** ("Retry Quiz 🧠" button)
+- [x] **Retry rejected mini-game** ("Retry Game 🎮" button)
+- [x] Parent reference photos viewable per task
+- [x] Homework attachment photo viewable
+- [x] Locked tasks with unlock date shown ("Available {date}")
+- [x] Improved upload error messaging
 
 ### Quiz Screen
-- [ ] Quiz categories (Math, Hebrew, Science, etc.)
-- [ ] Question display with timer
-- [ ] Multiple choice answers
-- [ ] Score calculation
-- [ ] Submit results to parent
-- [ ] Results screen with score
+- [x] AI-generated multi-choice questions
+- [x] **Green highlight for correct answers** (previously always red — fixed)
+- [x] Red highlight for wrong answers
+- [x] Score calculation + submit to Firestore
 
-### Waiting Screen
-- [ ] "ממתין לאישור ההורה" message
-- [ ] Animated hourglass/spinner
-- [ ] Real-time listener for approval
-- [ ] Notification when approved/rejected
+### Mini-Game Screen
+- [x] Math Blitz — speed math game
+- [x] Memory Sequence — pattern memory game
+- [x] Difficulty-based scoring
 
-### Freedom Screen
-- [ ] Celebration animation (confetti/fireworks)
-- [ ] "!יצאת מעונש 🎉" message
-- [ ] Summary of completed tasks
-- [ ] Notify parent automatically
-- [ ] Return to home
+### Other Child Screens
+- [x] Freedom/Celebration screen (confetti, task summary)
+- [x] Badges & Achievements screen
+- [x] Wallet screen (coins/rewards)
+- [x] Enter Linking Code screen (onboarding)
 
 ---
 
-## 🔔 Phase 5: Push Notifications
-**Estimated Time:** 1-2 days
-
-### Notification Types
-- [ ] **Parent receives:**
-  - Child submitted a task
-  - Child completed all tasks
-  - Child opened the app
-
-- [ ] **Child receives:**
-  - New punishment assigned
-  - Task approved
-  - Task rejected
-  - Punishment lifted
-
-### Implementation
-- [ ] Install expo-notifications
-- [ ] Request notification permissions
-- [ ] Get device push token
-- [ ] Store tokens in Firestore
-- [ ] Cloud Functions for sending notifications
-- [ ] Handle notification taps (deep linking)
-- [ ] Notification badge management
+## ✅ Phase 5: Real-time Sync & Notifications — COMPLETED
+- [x] Firestore real-time `onSnapshot` listeners (parent + child)
+- [x] Push notification on new challenge assigned
+- [x] Push notification on task approved/rejected
+- [x] Pending count badge on parent home
 
 ---
 
-## 🎨 Phase 6: UI/UX Polish
-**Estimated Time:** 2-3 days
-
-### Visual Enhancements
-- [ ] Custom app icon
-- [ ] Splash screen animation
-- [ ] Loading states and skeletons
-- [ ] Error states with friendly messages
-- [ ] Empty states with illustrations
-- [ ] Haptic feedback on actions
-- [ ] Smooth transitions and animations
-
-### Hebrew Localization
-- [ ] Verify all text is in Hebrew
-- [ ] Right-to-left layout verification
-- [ ] Hebrew number formatting
-- [ ] Date/time formatting (Hebrew locale)
-
-### Accessibility
-- [ ] Increase touch target sizes
-- [ ] Color contrast compliance
-- [ ] Screen reader support
-- [ ] Font scaling support
+## ✅ Phase 6: UI/UX Polish — COMPLETED
+- [x] Dark theme throughout (`#1a1a2e` / `#1E2140` gradient)
+- [x] Visible back button (white `headerTintColor` on dark header) — Parent & Child navigators
+- [x] Linear gradients on all action buttons
+- [x] Card-based layout with shadows
+- [x] Loading states (ActivityIndicator) and empty states
+- [x] RTL-aware text alignment throughout
+- [x] Wallet icon in child header
 
 ---
 
-## 🧪 Phase 7: Testing & Bug Fixes
-**Estimated Time:** 1-2 days
-
-- [ ] Parent flow end-to-end testing
-- [ ] Child flow end-to-end testing
-- [ ] Real-time sync testing (parent + child simultaneously)
-- [ ] Offline behavior testing
-- [ ] Push notification testing
-- [ ] Edge cases:
-  - No internet connection
-  - App killed in background
-  - Multiple children
-  - Rapid task submissions
-- [ ] Fix bugs and crashes
-- [ ] Performance optimization
+## ✅ Phase 7: Bug Fixes & Language Consistency — COMPLETED
+- [x] **All screens English-only when language = English** — removed all hardcoded Hebrew fallbacks
+- [x] Task Approval screen tabs ("Needs Approval" / "Completed") fully translated
+- [x] AI suggestion autofill — fixed `sg.id` → `sg._id` lookup bug
+- [x] Challenge creation race condition — merged two `updateDoc` calls into one atomic write
+- [x] Duplicate `hwPhotoLabel` StyleSheet property — renamed to `hwPhotoLabelFull`
+- [x] Photo upload "failed to fetch" — better error detection for network errors
+- [x] Quiz correct answer colour — green (`#27AE60`) instead of red
+- [x] Settings accessible from no-child-connected screen
 
 ---
 
-## 🚀 Phase 8: Advanced Features (Future)
-**Estimated Time:** 1-2 weeks
-
-### Task Categories & Templates
-- [ ] Pre-built task templates by age group
-- [ ] Task difficulty levels
-- [ ] Time-based tasks (e.g., read for 30 minutes)
-- [ ] Location-based tasks (with geofencing)
-
-### Gamification
-- [ ] Points system
-- [ ] Achievements/badges
-- [ ] Streak counters
-- [ ] Leaderboard (if multiple children)
-
-### Quiz Builder
-- [ ] Parent can create custom quizzes
-- [ ] Question bank by subject
-- [ ] Difficulty adjustment
-- [ ] Timed quizzes
-
-### Analytics & Insights
-- [ ] Parent dashboard with statistics
-- [ ] Task completion rates
-- [ ] Average time to complete punishment
-- [ ] Child behavior trends
-
-### Multi-Child Support
-- [ ] Parent can manage multiple children
-- [ ] Switch between child profiles
-- [ ] Compare progress
-
-### Premium Features
-- [ ] Custom themes
-- [ ] Advanced task types
-- [ ] AI-suggested tasks
-- [ ] Export reports
+## ✅ Phase 8: Testing — COMPLETED
+- [x] Playwright headless browser e2e tests on live VPS
+- [x] Full parent → child → approval flow verified
+- [x] Language consistency verified across all screens (zero Hebrew when set to English)
+- [x] "Add More Tasks" flow verified (Firestore `arrayUnion` confirmed working)
+- [x] Zero JS errors in production bundle
 
 ---
 
-## 📦 Phase 9: Deployment & Launch
-**Estimated Time:** 1 week
+## 🔜 Phase 9: Upcoming / Backlog
 
-### App Store Preparation
-- [ ] Create App Store account
-- [ ] Prepare app screenshots (Hebrew)
-- [ ] Write app description (Hebrew)
-- [ ] Privacy policy
-- [ ] Terms of service
-- [ ] App Store Optimization (ASO)
+### App Store Deployment
+- [ ] EAS Build — iOS `.ipa` + Android `.apk`
+- [ ] App Store Connect submission
+- [ ] Google Play Console submission
+- [ ] App icon + splash screen (final assets)
+- [ ] App Store screenshots (Hebrew + English)
+- [ ] Privacy policy & Terms of service pages
 
-### Build & Submit
-- [ ] Build iOS app with EAS Build
-- [ ] Build Android app with EAS Build
-- [ ] Submit to Apple App Store
-- [ ] Submit to Google Play Store
-- [ ] Wait for review approval
+### Features
+- [ ] Parent can add a rejection reason/message when rejecting a task (visible to child)
+- [ ] Child can view the rejection reason before retrying
+- [ ] Parent-child in-app messaging per task
+- [ ] Streak / daily login bonus for children
+- [ ] Parent can set a reward for completing the full challenge (e.g. "You get ice cream")
+- [ ] Multiple simultaneous challenges per child
+- [ ] Export challenge history as PDF/report
 
-### Marketing
-- [ ] Create landing page
-- [ ] Social media accounts
-- [ ] Launch video (Hebrew)
-- [ ] Press release
-- [ ] Reach out to parenting blogs/influencers
-
----
-
-## 🛠️ Technical Debt & Maintenance
-**Ongoing**
-
-- [ ] Set up error logging (Sentry)
-- [ ] Set up analytics (Firebase Analytics)
-- [ ] Monitor performance (Firebase Performance)
-- [ ] Set up CI/CD pipeline
-- [ ] Automated testing
-- [ ] Code documentation
-- [ ] Regular dependency updates
-- [ ] Monitor user feedback
-- [ ] A/B testing framework
+### Infrastructure
+- [ ] Sentry error logging
+- [ ] Firebase Analytics event tracking
+- [ ] CI/CD pipeline (GitHub Actions → auto-deploy to VPS on push to main)
+- [ ] Automated Playwright regression tests on every deploy
 
 ---
 
-## 📊 Success Metrics
+## 📊 Current Status — March 2026
 
-### Phase 1-2 (MVP)
-- [ ] App runs on both iOS and Android
-- [ ] Parent can create punishment
-- [ ] Child can see and complete tasks
-- [ ] Real-time sync works
-- [ ] Push notifications work
+**Production:** Live at https://escapechallenge.ventrasystems.com
 
-### Phase 3 (Beta)
-- [ ] 50 beta testers
-- [ ] < 5% crash rate
-- [ ] Average session length > 3 minutes
-- [ ] Task completion rate > 70%
+**All core features shipped and tested.** The app supports the full parent-child challenge workflow end-to-end including AI quizzes, mini-games, homework tasks, photo uploads, multi-child management, bilingual support, and real-time sync.
 
-### Phase 4 (Launch)
-- [ ] 500 downloads in first month
-- [ ] 4+ star rating
-- [ ] < 2% crash rate
-- [ ] 30-day retention > 40%
-
----
-
-## 🎯 Current Status
-**Phase 1: COMPLETED ✅**
-
-**Next Up: Phase 2 - Firebase Integration**
-
-You now have a working Expo app with:
-- Role selection (Parent/Child)
-- Parent Home screen with mockup data
-- Child Home screen with mockup data
-- Hebrew RTL support
-- Basic navigation structure
-- TypeScript types defined
-
-**To continue, provide your Firebase credentials and we'll move to Phase 2!**
+**Next milestone:** App Store / Google Play submission.

@@ -80,6 +80,9 @@ export default function ParentHomeScreen({ navigation }: any) {
               <Text style={styles.primaryButtonText}>{t.parentHome.connectChild}</Text>
             </LinearGradient>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.settingsBtn} onPress={() => navigation.navigate('Settings')}>
+            <Text style={styles.settingsBtnText}>{t.parentHome.settings}</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutBtnText}>{t.common.logout}</Text>
           </TouchableOpacity>
@@ -232,6 +235,17 @@ export default function ParentHomeScreen({ navigation }: any) {
                     </LinearGradient>
                   </TouchableOpacity>
                 )}
+                {punishment && !isComplete && (
+                  <TouchableOpacity
+                    style={[styles.actionWrapper, { marginTop: 8 }]}
+                    onPress={() => goToChild(child.id, 'SetPunishment', { punishmentId: punishment.id })}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient colors={['#1a2a1a', '#2d4a2d']} style={styles.actionButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                      <Text style={styles.actionButtonText}>{t.parentHome.addTasks}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           );
@@ -290,7 +304,9 @@ const styles = StyleSheet.create({
   noChildEmoji: { fontSize: 64, marginBottom: 20 },
   noChildTitle: { fontSize: 24, fontWeight: '700', color: C.text, marginBottom: 10, textAlign: 'center', letterSpacing: 0.2 },
   noChildText: { fontSize: 15, color: C.textMed, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  logoutBtn: { marginTop: 20, padding: 12 },
+  settingsBtn: { marginTop: 12, padding: 12 },
+  settingsBtnText: { color: C.textMed, fontSize: 15, fontWeight: '600' },
+  logoutBtn: { marginTop: 8, padding: 12 },
   logoutBtnText: { color: C.danger, fontSize: 15, fontWeight: '600' },
 
   header: {

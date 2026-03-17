@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,7 @@ export default function TasksListScreen({ navigation }: any) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const { t, isRTL, language } = useLanguage();
+  const cameraInputRef = useRef<any>(null);
 
   useEffect(() => {
     // Single-field query only (avoids composite index requirement)
@@ -92,7 +93,10 @@ export default function TasksListScreen({ navigation }: any) {
   };
 
   const takePhoto = async () => {
-    if (Platform.OS === 'web') { pickPhoto(); return; }
+    if (Platform.OS === 'web') {
+      cameraInputRef.current?.click();
+      return;
+    }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       showAlert(t.tasksList.permissionRequired, t.tasksList.errorCamera);
@@ -102,6 +106,14 @@ export default function TasksListScreen({ navigation }: any) {
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
     }
+  };
+
+  const handleWebCameraInput = (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const uri = URL.createObjectURL(file);
+    setPhotoUri(uri);
+    e.target.value = '';
   };
 
   const uploadPhoto = async (uri: string, punishmentId: string, taskId: string): Promise<string> => {
@@ -203,7 +215,10 @@ export default function TasksListScreen({ navigation }: any) {
         },
       ]);
     } catch (error: any) {
-      showAlert(t.common.error, error?.message || t.tasksList.errorSubmit);
+      const msg = error?.message?.includes('fetch') || error?.message?.includes('network')
+        ? t.tasksList.errorUpload
+        : (error?.message || t.tasksList.errorSubmit);
+      showAlert(t.common.error, msg);
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -258,7 +273,7 @@ export default function TasksListScreen({ navigation }: any) {
             {selectedTask.parentNote ? (
               <View style={styles.parentNoteBox}>
                 <Text style={[styles.parentNoteLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  👨‍👩‍👧 {t.tasksList.parentInstructions || 'Parent instructions:'}
+                  👨‍👩‍👧 {t.tasksList.parentInstructions}
                 </Text>
                 <Text style={[styles.parentNoteText, { textAlign: isRTL ? 'right' : 'left' }]}>{selectedTask.parentNote}</Text>
               </View>
@@ -266,7 +281,7 @@ export default function TasksListScreen({ navigation }: any) {
             {selectedTask.refPhotoUrls?.length > 0 && (
               <View style={styles.refPhotosBox}>
                 <Text style={[styles.parentNoteLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  📸 {t.tasksList.referencePhotos || 'Reference photos:'}
+                  📸 {t.tasksList.referencePhotos}
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {selectedTask.refPhotoUrls.map((url: string, i: number) => (
@@ -278,7 +293,7 @@ export default function TasksListScreen({ navigation }: any) {
             {selectedTask.homeworkPhotoUrl && (
               <View style={styles.hwPhotoContainer}>
                 <Text style={[styles.hwPhotoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  {t.tasksList.homeworkSheet || '📄 Homework sheet:'}
+                  {t.tasksList.homeworkSheet}
                 </Text>
                 <Image source={{ uri: selectedTask.homeworkPhotoUrl }} style={styles.hwPhoto} resizeMode="contain" />
               </View>
@@ -291,10 +306,20 @@ export default function TasksListScreen({ navigation }: any) {
             {/* Show previously submitted photo if editing */}
             {!photoUri && selectedTask.photoUrl && (
               <View style={styles.existingPhotoWrap}>
-                <Text style={styles.existingPhotoLabel}>📎 {t.tasksList.currentPhoto || 'Current photo:'}</Text>
+                <Text style={styles.existingPhotoLabel}>📎 {t.tasksList.currentPhoto}</Text>
                 <Image source={{ uri: selectedTask.photoUrl }} style={styles.photoImg} resizeMode="cover" />
-                <Text style={styles.existingPhotoHint}>{t.tasksList.replacePhotoHint || 'Pick a new photo below to replace it'}</Text>
+                <Text style={styles.existingPhotoHint}>{t.tasksList.replacePhotoHint}</Text>
               </View>
+            )}
+            {Platform.OS === 'web' && (
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handleWebCameraInput}
+              />
             )}
             {photoUri ? (
               <View style={styles.photoPreview}>
@@ -305,11 +330,9 @@ export default function TasksListScreen({ navigation }: any) {
               </View>
             ) : (
               <View style={styles.photoButtons}>
-                {Platform.OS !== 'web' && (
-                  <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
-                    <Text style={styles.photoBtnText}>{t.tasksList.takePhoto}</Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
+                  <Text style={styles.photoBtnText}>{t.tasksList.takePhoto}</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto}>
                   <Text style={styles.photoBtnText}>{t.tasksList.gallery}</Text>
                 </TouchableOpacity>
@@ -383,7 +406,7 @@ export default function TasksListScreen({ navigation }: any) {
                 <View style={styles.taskInfo}>
                   <Text style={[styles.taskTitle, { color: '#BDC3C7' }]}>{task.title}</Text>
                   <Text style={styles.taskDescription}>
-                    {language === 'en' ? `Available ${task.unlockDate}` : `זמין מ-${task.unlockDate}`}
+                    {t.tasksList.taskAvailable.replace('{date}', task.unlockDate)}
                   </Text>
                 </View>
               </View>
@@ -414,7 +437,7 @@ export default function TasksListScreen({ navigation }: any) {
                 activeOpacity={0.85}
               >
                 <View style={styles.hwPhotoFull}>
-                  <Text style={styles.hwPhotoLabel}>📎 {language === 'en' ? 'Tap to view homework attachment' : 'לחץ לצפייה בצילום שיעורי הבית'}</Text>
+                  <Text style={styles.hwPhotoLabelFull}>📎 {t.tasksList.tapToViewHomework}</Text>
                   <Image
                     source={{ uri: task.homeworkPhotoUrl }}
                     style={styles.hwPhotoImg}
@@ -463,13 +486,13 @@ export default function TasksListScreen({ navigation }: any) {
               >
                 <LinearGradient colors={['#F39C12', '#E67E22']} style={styles.startButton}>
                   <Text style={styles.startButtonText}>
-                    ✏️ {t.tasksList.editSubmission || 'Edit Submission'}
+                    ✏️ {t.tasksList.editSubmission}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}
 
-            {task.status === 'rejected' && task.type !== 'quiz' && (
+            {task.status === 'rejected' && (
               <TouchableOpacity
                 style={styles.startWrapper}
                 onPress={() => handleTaskComplete(task)}
@@ -477,7 +500,11 @@ export default function TasksListScreen({ navigation }: any) {
               >
                 <LinearGradient colors={['#8E54E9', '#4776E6']} style={styles.startButton}>
                   <Text style={styles.startButtonText}>
-                    🔄 {t.tasksList.resubmit || 'Resubmit Task'}
+                    {task.type === 'quiz'
+                      ? t.tasksList.retryQuiz
+                      : task.type === 'minigame'
+                      ? t.tasksList.retryGame
+                      : `🔄 ${t.tasksList.resubmit}`}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -548,7 +575,7 @@ const styles = StyleSheet.create({
   existingPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#856404', marginBottom: 6 },
   existingPhotoHint: { fontSize: 11, color: '#B8860B', marginTop: 6, textAlign: 'center' },
   hwPhotoFull: { backgroundColor: '#EBF5FB', borderRadius: 10, padding: 10, marginTop: 8, marginBottom: 4 },
-  hwPhotoLabel: { fontSize: 12, color: '#2980B9', fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+  hwPhotoLabelFull: { fontSize: 12, color: '#2980B9', fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
   hwPhotoImg: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#D6EAF8' },
   hwPhotoContainer: { marginTop: 12, backgroundColor: '#F0F7FF', borderRadius: 10, padding: 10 },
   hwPhotoLabel: { fontSize: 13, fontWeight: 'bold', color: '#3498DB', marginBottom: 8 },

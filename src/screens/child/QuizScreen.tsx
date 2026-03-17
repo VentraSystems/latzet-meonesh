@@ -208,7 +208,9 @@ export default function QuizScreen({ route, navigation }: Props) {
             key={index}
             style={[
               styles.optionButton,
-              selectedAnswers[currentQuestion] === index && styles.selectedOption,
+              selectedAnswers[currentQuestion] === index && (
+                index === question.correctAnswer ? styles.correctOption : styles.wrongOption
+              ),
             ]}
             onPress={() => handleAnswer(index)}
           >
@@ -267,7 +269,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E0E0E0',
   },
-  selectedOption: {
+  correctOption: {
+    borderColor: '#27AE60',
+    backgroundColor: '#E8F8F0',
+  },
+  wrongOption: {
     borderColor: '#E74C3C',
     backgroundColor: '#FFE5E5',
   },

@@ -12,10 +12,17 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const Stack = createNativeStackNavigator();
 
+const screenOptions = {
+  headerStyle: { backgroundColor: '#1a1a2e' },
+  headerTintColor: '#FFFFFF',
+  headerTitleStyle: { fontWeight: '700' as const, color: '#FFFFFF' },
+  headerBackTitleVisible: false,
+};
+
 export default function ChildNavigator() {
   const { t } = useLanguage();
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen name="ChildHome" component={ChildHomeScreen} options={{ title: t.appName, headerTitleAlign: 'center' }} />
       <Stack.Screen name="EnterLinkingCode" component={EnterLinkingCodeScreen} options={{ title: t.linkChild.title, headerTitleAlign: 'center' }} />
       <Stack.Screen name="TasksList" component={TasksListScreen} options={{ title: t.tasksList.yourTasks, headerTitleAlign: 'center' }} />

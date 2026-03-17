@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { collection, addDoc, getDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDoc, doc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { taskPresets } from '../../data/taskPresets';
@@ -58,11 +58,15 @@ interface AiQuizConfig {
   grade: number; // 1-12
 }
 
-export default function SetPunishmentScreen({ navigation }: any) {
+export default function SetPunishmentScreen({ navigation, route }: any) {
+  const existingPunishmentId: string | undefined = route?.params?.punishmentId;
   const [punishmentName, setPunishmentName] = useState('');
   const [nameEditedByUser, setNameEditedByUser] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [customTask, setCustomTask] = useState('');
+  const [customTaskPhotoUri, setCustomTaskPhotoUri] = useState<string | null>(null);
+  const [customTaskPhotos, setCustomTaskPhotos] = useState<Record<string, string>>({});
+  const customCameraInputRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
 
@@ -151,9 +155,37 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
   const addCustomTask = () => {
     if (customTask.trim()) {
-      setSelectedTasks((prev) => [...prev, `custom-${Date.now()}-${customTask}`]);
+      const taskId = `custom-${Date.now()}-${customTask}`;
+      setSelectedTasks((prev) => [...prev, taskId]);
+      if (customTaskPhotoUri) {
+        setCustomTaskPhotos((prev) => ({ ...prev, [taskId]: customTaskPhotoUri }));
+      }
       setCustomTask('');
+      setCustomTaskPhotoUri(null);
     }
+  };
+
+  const pickCustomTaskPhoto = async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.5,
+    });
+    if (!result.canceled && result.assets[0]) setCustomTaskPhotoUri(result.assets[0].uri);
+  };
+
+  const takeCustomTaskPhoto = () => {
+    if (Platform.OS === 'web') { customCameraInputRef.current?.click(); return; }
+    ImagePicker.requestCameraPermissionsAsync().then(({ status }) => {
+      if (status !== 'granted') return;
+      ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.5 }).then((result) => {
+        if (!result.canceled && result.assets[0]) setCustomTaskPhotoUri(result.assets[0].uri);
+      });
+    });
   };
 
   const openSubject = (subjectId: string) => {
@@ -251,7 +283,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
     });
 
     selectedSuggestionIds.forEach((id) => {
-      const s = aiSuggestions.find((sg: any) => sg.id === id);
+      const s = aiSuggestions.find((sg: any) => sg._id === id);
       if (s) parts.push(language === 'en' ? (s.titleEn || s.title) : s.title);
     });
 
@@ -286,7 +318,7 @@ export default function SetPunishmentScreen({ navigation }: any) {
   }, [selectedTasks, aiQuizzes, miniGames, homeworkTasks, selectedSuggestionIds, noPhoneConfirmed, nameEditedByUser, language]);
 
   const createPunishment = async () => {
-    if (!punishmentName.trim()) {
+    if (!existingPunishmentId && !punishmentName.trim()) {
       showAlert(t.common.error, t.setPunishment.errorName);
       return;
     }
@@ -365,6 +397,17 @@ export default function SetPunishmentScreen({ navigation }: any) {
             catch (e: any) { console.warn('Ref photo upload failed, skipping:', e?.message); return null; }
           }));
           uploadedRefPhotos[taskId] = urls.filter(Boolean) as string[];
+        })
+      );
+
+      // Upload custom task reference photos
+      await Promise.all(
+        Object.entries(customTaskPhotos).map(async ([taskId, uri]) => {
+          if (!uri || uploadedRefPhotos[taskId]) return;
+          try {
+            const url = await uploadRefPhoto(uri, taskId, 0);
+            uploadedRefPhotos[taskId] = [url];
+          } catch (e) { console.warn('Custom task photo upload failed:', e); }
         })
       );
 
@@ -493,21 +536,34 @@ export default function SetPunishmentScreen({ navigation }: any) {
 
       const allTasks = [...presetTasks, ...aiTasks, ...suggestionTasks, ...hwTasksFinal, ...miniGameTasks];
 
-      const punishmentRef = await addDoc(collection(db, 'punishments'), {
-        name: punishmentName,
-        parentId: user!.uid,
-        childId: linkedUserId,
-        tasks: allTasks,
-        status: 'active',
-        createdAt: new Date(),
-        requiredTasksCount: allTasks.length,
-      });
+      if (existingPunishmentId) {
+        // Add tasks to existing challenge
+        await updateDoc(doc(db, 'punishments', existingPunishmentId), {
+          tasks: arrayUnion(...allTasks),
+          requiredTasksCount: increment(allTasks.length),
+        });
 
-      await notifyNewPunishment(linkedUserId, punishmentName, allTasks.length, punishmentRef.id);
+        showAlert(t.setPunishment.successTitle, t.setPunishment.addTasksSuccessMsg.replace('{n}', String(allTasks.length)), [
+          { text: t.common.ok, onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        // Create new challenge
+        const punishmentRef = await addDoc(collection(db, 'punishments'), {
+          name: punishmentName,
+          parentId: user!.uid,
+          childId: linkedUserId,
+          tasks: allTasks,
+          status: 'active',
+          createdAt: new Date(),
+          requiredTasksCount: allTasks.length,
+        });
 
-      showAlert(t.setPunishment.successTitle, t.setPunishment.successMsg.replace('{n}', String(allTasks.length)), [
-        { text: t.common.ok, onPress: () => navigation.goBack() },
-      ]);
+        await notifyNewPunishment(linkedUserId, punishmentName, allTasks.length, punishmentRef.id);
+
+        showAlert(t.setPunishment.successTitle, t.setPunishment.successMsg.replace('{n}', String(allTasks.length)), [
+          { text: t.common.ok, onPress: () => navigation.goBack() },
+        ]);
+      }
     } catch (error: any) {
       showAlert(t.common.error, error.message || t.setPunishment.errorNoTasks);
     } finally {
@@ -662,20 +718,22 @@ export default function SetPunishmentScreen({ navigation }: any) {
     <ScrollView style={styles.container}>
       <Text style={styles.title}>{t.setPunishment.title}</Text>
 
-      {/* Punishment name */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.punishmentName}</Text>
-        <TextInput
-          style={styles.input}
-          placeholder={t.setPunishment.namePlaceholder}
-          value={punishmentName}
-          onChangeText={(text) => {
-            setPunishmentName(text);
-            setNameEditedByUser(text.length > 0);
-          }}
-          textAlign={isRTL ? 'right' : 'left'}
-        />
-      </View>
+      {/* Punishment name — hidden when adding to existing challenge */}
+      {!existingPunishmentId && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.punishmentName}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={t.setPunishment.namePlaceholder}
+            value={punishmentName}
+            onChangeText={(text) => {
+              setPunishmentName(text);
+              setNameEditedByUser(text.length > 0);
+            }}
+            textAlign={isRTL ? 'right' : 'left'}
+          />
+        </View>
+      )}
 
       {/* Summary badge */}
       {totalCount > 0 && (
@@ -687,6 +745,19 @@ export default function SetPunishmentScreen({ navigation }: any) {
       {/* Custom task */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.setPunishment.customTask}</Text>
+        {Platform.OS === 'web' && (
+          <input
+            ref={customCameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={(e: any) => {
+              const file = e.target.files?.[0];
+              if (file) { setCustomTaskPhotoUri(URL.createObjectURL(file)); e.target.value = ''; }
+            }}
+          />
+        )}
         <View style={styles.customTaskRow}>
           <TouchableOpacity style={styles.addButton} onPress={addCustomTask}>
             <Text style={styles.addButtonText}>{t.setPunishment.addCustom}</Text>
@@ -699,11 +770,30 @@ export default function SetPunishmentScreen({ navigation }: any) {
             textAlign={isRTL ? 'right' : 'left'}
           />
         </View>
+        <View style={styles.customPhotoRow}>
+          <TouchableOpacity style={styles.customPhotoBtn} onPress={takeCustomTaskPhoto}>
+            <Text style={styles.customPhotoBtnText}>📷</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.customPhotoBtn} onPress={pickCustomTaskPhoto}>
+            <Text style={styles.customPhotoBtnText}>🖼️</Text>
+          </TouchableOpacity>
+          {customTaskPhotoUri && (
+            <View style={styles.customPhotoPreview}>
+              <Image source={{ uri: customTaskPhotoUri }} style={styles.customPhotoThumb} resizeMode="cover" />
+              <TouchableOpacity onPress={() => setCustomTaskPhotoUri(null)} style={styles.customPhotoRemove}>
+                <Text style={styles.customPhotoRemoveText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
         {selectedTasks.filter((id) => id.startsWith('custom-')).map((id) => (
           <View key={id} style={styles.customChip}>
             <TouchableOpacity onPress={() => toggleTask(id)}>
               <Text style={styles.customChipRemove}>✕</Text>
             </TouchableOpacity>
+            {customTaskPhotos[id] && (
+              <Image source={{ uri: customTaskPhotos[id] }} style={styles.customChipThumb} resizeMode="cover" />
+            )}
             <Text style={styles.customChipText}>{id.split('-').slice(2).join('-')}</Text>
           </View>
         ))}
@@ -1039,11 +1129,13 @@ export default function SetPunishmentScreen({ navigation }: any) {
         {loading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color="#FFFFFF" />
-            <Text style={styles.loadingText}>{loadingMsg || t.setPunishment.creating}</Text>
+            <Text style={styles.loadingText}>{loadingMsg || (existingPunishmentId ? t.setPunishment.adding : t.setPunishment.creating)}</Text>
           </View>
         ) : (
           <Text style={styles.createButtonText}>
-            {t.setPunishment.createBtn.replace('{n}', String(totalCount))}
+            {existingPunishmentId
+              ? t.setPunishment.addTasksBtn.replace('{n}', String(totalCount))
+              : t.setPunishment.createBtn.replace('{n}', String(totalCount))}
           </Text>
         )}
       </TouchableOpacity>
@@ -1156,11 +1248,19 @@ const styles = StyleSheet.create({
   // Custom task
   customTaskRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   customInput: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, fontSize: 15, borderWidth: 1, borderColor: '#E0E0E0' },
+  customPhotoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  customPhotoBtn: { backgroundColor: '#F0F2FF', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#4776E6' },
+  customPhotoBtnText: { fontSize: 18 },
+  customPhotoPreview: { position: 'relative' },
+  customPhotoThumb: { width: 48, height: 48, borderRadius: 8 },
+  customPhotoRemove: { position: 'absolute', top: -4, right: -4, backgroundColor: '#E74C3C', borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
+  customPhotoRemoveText: { color: '#FFF', fontSize: 9, fontWeight: 'bold' },
   addButton: { backgroundColor: '#3498DB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
   addButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
   customChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F8F5', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginTop: 8, gap: 8, borderWidth: 1, borderColor: '#27AE60' },
   customChipText: { flex: 1, color: '#2C3E50', fontSize: 14, textAlign: 'right' },
   customChipRemove: { color: '#E74C3C', fontWeight: 'bold', fontSize: 16 },
+  customChipThumb: { width: 32, height: 32, borderRadius: 6 },
 
   // AI Suggestions
   surpriseButtonWrap: { borderRadius: 14, overflow: 'hidden', marginBottom: 12 },

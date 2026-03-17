@@ -55,7 +55,13 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
                 t.id === taskId ? { ...t, status: 'approved', approvedAt: new Date() } : t
               );
 
-              await updateDoc(doc(db, 'punishments', punishmentId), { tasks: updatedTasks });
+              const allApproved = updatedTasks.every((t: any) => t.status === 'approved');
+
+              // Single updateDoc — include status:completed when all tasks done (avoids race condition)
+              await updateDoc(doc(db, 'punishments', punishmentId), {
+                tasks: updatedTasks,
+                ...(allApproved ? { status: 'completed', completedAt: new Date() } : {}),
+              });
 
               // Award points and badges to child
               const result = await awardPointsAndBadges(
@@ -82,12 +88,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
 
               await notifyTaskApproved(punishment.childId, task.title, punishmentId, taskId);
 
-              const allApproved = updatedTasks.every((t: any) => t.status === 'approved');
               if (allApproved) {
-                await updateDoc(doc(db, 'punishments', punishmentId), {
-                  status: 'completed',
-                  completedAt: new Date(),
-                });
                 await incrementCompletedPunishments(punishment.childId);
 
                 const pointsMsg = result ? `\n${t.taskApproval.pointsEarned.replace('{n}', String(result.pointsEarned))}` : '';
@@ -171,7 +172,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
           onPress={() => setActiveTab('pending')}
         >
           <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
-            {pendingTasks.length > 0 ? `⏳ ${t.taskApproval.tabPending || 'Needs Approval'} (${pendingTasks.length})` : `⏳ ${t.taskApproval.tabPending || 'Needs Approval'}`}
+            {pendingTasks.length > 0 ? `⏳ ${t.taskApproval.tabPending} (${pendingTasks.length})` : `⏳ ${t.taskApproval.tabPending}`}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -179,7 +180,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
           onPress={() => setActiveTab('done')}
         >
           <Text style={[styles.tabText, activeTab === 'done' && styles.tabTextActive]}>
-            {`✅ ${t.taskApproval.tabDone || 'Completed'} (${doneTasks.length})`}
+            {`✅ ${t.taskApproval.tabDone} (${doneTasks.length})`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -187,7 +188,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
       {shownTasks.length === 0 && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>{activeTab === 'pending' ? '✨' : '📋'}</Text>
-          <Text style={styles.emptyTitle}>{activeTab === 'pending' ? t.taskApproval.empty : (t.taskApproval.noDone || 'No completed tasks yet')}</Text>
+          <Text style={styles.emptyTitle}>{activeTab === 'pending' ? t.taskApproval.empty : t.taskApproval.noDone}</Text>
           <Text style={styles.emptyText}>{activeTab === 'pending' ? t.taskApproval.emptyDesc : ''}</Text>
         </View>
       )}
@@ -222,7 +223,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
             {/* Homework reference photo (attached by parent) */}
             {task.homeworkPhotoUrl && (
               <View style={styles.photoContainer}>
-                <Text style={[styles.photoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>📄 Homework attachment:</Text>
+                <Text style={[styles.photoLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.taskApproval.homeworkAttachment}</Text>
                 <View style={styles.photoWrap}>
                   <Image source={{ uri: task.homeworkPhotoUrl }} style={styles.photo} resizeMode="contain" />
                 </View>
@@ -283,7 +284,7 @@ export default function TaskApprovalScreen({ route, navigation }: any) {
             {(task.status === 'approved' || task.status === 'rejected') && (
               <View style={[styles.doneBadge, { backgroundColor: task.status === 'approved' ? '#E8F8F0' : '#FFF0F0' }]}>
                 <Text style={[styles.doneBadgeText, { color: task.status === 'approved' ? '#27AE60' : '#E74C3C' }]}>
-                  {task.status === 'approved' ? `✅ ${t.taskApproval.approveBtn || 'Approved'}` : `❌ ${t.taskApproval.rejectBtn || 'Rejected'}`}
+                  {task.status === 'approved' ? `✅ ${t.taskApproval.approveBtn}` : `❌ ${t.taskApproval.rejectBtn}`}
                 </Text>
               </View>
             )}

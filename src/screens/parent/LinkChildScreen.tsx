@@ -36,7 +36,7 @@ export default function LinkChildScreen({ navigation, route }: any) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{existingChildId ? `🔗 ${childName || t.linkChild.title}` : t.linkChild.title}</Text>
-      <Text style={styles.description}>{existingChildId ? `Generate a code for ${childName || 'this child'} to reconnect` : t.linkChild.desc}</Text>
+      <Text style={styles.description}>{existingChildId ? t.linkChild.reconnectDesc.replace('{name}', childName || t.linkChild.title) : t.linkChild.desc}</Text>
 
       {!linkingCode ? (
         <TouchableOpacity
