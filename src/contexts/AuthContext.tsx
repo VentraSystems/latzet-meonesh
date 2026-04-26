@@ -50,9 +50,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   });
 
   useEffect(() => {

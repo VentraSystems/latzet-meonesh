@@ -1,5 +1,9 @@
 module.exports = function(api) {
-  api.cache.using(() => require('fs').readFileSync('.env', 'utf8'));
+  try {
+    api.cache.using(() => require('fs').readFileSync('.env', 'utf8'));
+  } catch {
+    api.cache.never();
+  }
   return {
     presets: ['babel-preset-expo'],
     plugins: [
