@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, addDoc, getDoc, doc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
@@ -715,7 +716,8 @@ export default function SetPunishmentScreen({ navigation, route }: any) {
   const behaviorTasks = taskPresets.filter((t) => t.category === 'behavior');
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{t.setPunishment.title}</Text>
 
       {/* Punishment name — hidden when adding to existing challenge */}
@@ -1144,11 +1146,13 @@ export default function SetPunishmentScreen({ navigation, route }: any) {
         <Text style={styles.cancelButtonText}>{t.setPunishment.cancel}</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA', padding: 16 },
+  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  scrollContent: { padding: 16 },
   title: { fontSize: 26, fontWeight: 'bold', color: '#2C3E50', textAlign: 'center', marginTop: 16, marginBottom: 20 },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2C3E50', textAlign: 'right', marginBottom: 8 },

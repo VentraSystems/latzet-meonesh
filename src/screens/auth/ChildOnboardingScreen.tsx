@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -109,6 +111,8 @@ export default function ChildOnboardingScreen({ navigation }: any) {
   if (step === 1) {
     return (
       <LinearGradient colors={['#c0392b', '#e74c3c', '#e67e22']} style={styles.container}>
+        <KeyboardAvoidingView style={styles.flex1} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <Text style={styles.emoji}>👶</Text>
           <Text style={styles.title}>{t.onboarding.step1Title}</Text>
@@ -191,12 +195,16 @@ export default function ChildOnboardingScreen({ navigation }: any) {
             <Text style={styles.backButtonText}>{t.onboarding.backToLogin}</Text>
           </TouchableOpacity>
         </Animated.View>
+        </ScrollView>
+        </KeyboardAvoidingView>
       </LinearGradient>
     );
   }
 
   if (step === 2) return (
     <LinearGradient colors={['#c0392b', '#e74c3c', '#e67e22']} style={styles.container}>
+      <KeyboardAvoidingView style={styles.flex1} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <Text style={styles.emoji}>✨</Text>
         <Text style={styles.title}>{t.onboarding.step2Title}</Text>
@@ -225,6 +233,8 @@ export default function ChildOnboardingScreen({ navigation }: any) {
           <Text style={styles.backButtonText}>{t.onboarding.back}</Text>
         </TouchableOpacity>
       </Animated.View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 
@@ -278,6 +288,10 @@ export default function ChildOnboardingScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  flex1: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },

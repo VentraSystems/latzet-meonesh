@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
@@ -263,8 +264,8 @@ export default function TasksListScreen({ navigation }: any) {
 
   if (selectedTask) {
     return (
-      <View style={styles.container}>
-        <ScrollView style={styles.submitContainer} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={styles.submitContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.submitTitle}>{t.tasksList.submitTitle}</Text>
 
           <View style={styles.taskCard}>
@@ -378,7 +379,7 @@ export default function TasksListScreen({ navigation }: any) {
             <Text style={styles.cancelButtonText}>{t.tasksList.cancel}</Text>
           </TouchableOpacity>
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 

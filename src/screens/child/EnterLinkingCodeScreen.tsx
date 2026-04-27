@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -54,41 +57,49 @@ export default function EnterLinkingCodeScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{t.linkChild.title}</Text>
-      <Text style={styles.description}>{t.onboarding.step1Hint}</Text>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="000000"
-          value={code}
-          onChangeText={(text) => setCode(text.replace(/[^0-9]/g, ''))}
-          keyboardType="number-pad"
-          maxLength={6}
-          textAlign="center"
-        />
-      </View>
-
-      <TouchableOpacity
-        style={styles.submitButton}
-        onPress={handleSubmit}
-        disabled={loading || code.length !== 6}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
-        {loading ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.submitButtonText}>{t.childHome.connectParentBtn}</Text>
-        )}
-      </TouchableOpacity>
+        <Text style={styles.title}>{t.linkChild.title}</Text>
+        <Text style={styles.description}>{t.onboarding.step1Hint}</Text>
 
-      <TouchableOpacity
-        style={styles.skipButton}
-        onPress={() => navigation.replace('ChildHome')}
-      >
-        <Text style={styles.skipButtonText}>{t.common.back}</Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="000000"
+            value={code}
+            onChangeText={(text) => setCode(text.replace(/[^0-9]/g, ''))}
+            keyboardType="number-pad"
+            maxLength={6}
+            textAlign="center"
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleSubmit}
+          disabled={loading || code.length !== 6}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>{t.childHome.connectParentBtn}</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={() => navigation.replace('ChildHome')}
+        >
+          <Text style={styles.skipButtonText}>{t.common.back}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -96,6 +107,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
     justifyContent: 'center',
   },
