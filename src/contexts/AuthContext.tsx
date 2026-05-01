@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   User,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   signInWithPopup,
 } from 'firebase/auth';
@@ -16,6 +17,8 @@ import { useNotifications } from '../hooks/useNotifications';
 import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -26,6 +29,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   logout: () => Promise<void>;
   linkedUserId: string | null;       // currently selected child
   linkedUserIds: string[];           // all linked children
@@ -199,6 +203,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithApple = async () => {
+    if (Platform.OS !== 'ios') {
+      throw new Error('Sign in with Apple is only available on iOS.');
+    }
+
+    // Apple + Firebase requires a nonce: send the SHA256 hash to Apple,
+    // then pass the raw nonce to Firebase so it can verify the ID token.
+    const rawNonce = Array.from(Crypto.getRandomBytes(32))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const hashedNonce = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      rawNonce
+    );
+
+    const appleCredential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce: hashedNonce,
+    });
+
+    if (!appleCredential.identityToken) {
+      throw new Error('Apple Sign-In did not return an identity token.');
+    }
+
+    const provider = new OAuthProvider('apple.com');
+    const credential = provider.credential({
+      idToken: appleCredential.identityToken,
+      rawNonce,
+    });
+
+    const result = await signInWithCredential(auth, credential);
+    const firebaseUser = result.user;
+
+    // First sign-in: Apple only sends fullName/email once. Persist the
+    // user doc immediately so the Firestore listener doesn't race ahead.
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const existing = await getDoc(userDocRef);
+    if (!existing.exists()) {
+      const fullName = appleCredential.fullName;
+      const composedName = [fullName?.givenName, fullName?.familyName]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      await setDoc(userDocRef, {
+        name: composedName || firebaseUser.displayName || 'User',
+        email: appleCredential.email || firebaseUser.email || null,
+        role: 'parent',
+        createdAt: new Date(),
+        linkedUserId: null,
+        linkedUserIds: [],
+        totalPoints: 0,
+        badges: [],
+      });
+      setUserRole('parent');
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
     setUserRole(null);
@@ -213,6 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signInWithGoogle,
+    signInWithApple,
     logout,
     linkedUserId,
     linkedUserIds,

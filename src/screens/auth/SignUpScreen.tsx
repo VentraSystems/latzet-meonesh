@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole } from '../../types';
 import { showAlert } from '../../utils/alert';
@@ -23,7 +24,7 @@ export default function SignUpScreen({ navigation }: any) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle, signInWithApple } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
   const { t, isRTL } = useLanguage();
 
@@ -59,6 +60,15 @@ export default function SignUpScreen({ navigation }: any) {
       showAlert(t.common.error, error.message || t.signup.errorFill);
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      await signInWithApple();
+    } catch (error: any) {
+      if (error?.code === 'ERR_REQUEST_CANCELED') return;
+      showAlert(t.common.error, error.message || t.signup.errorFill);
     }
   };
 
@@ -198,6 +208,16 @@ export default function SignUpScreen({ navigation }: any) {
                 </>
               )}
             </TouchableOpacity>
+
+            {Platform.OS === 'ios' && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                cornerRadius={14}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
+            )}
 
             <TouchableOpacity style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
               <Text style={styles.loginLinkText}>
@@ -362,6 +382,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  appleButton: {
+    width: '100%',
+    height: 50,
+    marginTop: 12,
   },
   loginLink: {
     marginTop: 20,

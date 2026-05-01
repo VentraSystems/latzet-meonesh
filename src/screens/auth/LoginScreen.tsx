@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -20,7 +21,7 @@ export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
   const { t, isRTL } = useLanguage();
 
   const handleLogin = async () => {
@@ -42,6 +43,16 @@ export default function LoginScreen({ navigation }: any) {
     try {
       await signInWithGoogle();
     } catch (error: any) {
+      showAlert(t.common.error, error.message);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      await signInWithApple();
+    } catch (error: any) {
+      // User canceling the sheet should be silent, not an alert
+      if (error?.code === 'ERR_REQUEST_CANCELED') return;
       showAlert(t.common.error, error.message);
     }
   };
@@ -113,6 +124,16 @@ export default function LoginScreen({ navigation }: any) {
               </View>
               <Text style={styles.googleButtonText}>{t.login.googleBtn}</Text>
             </TouchableOpacity>
+
+            {Platform.OS === 'ios' && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={R}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
+            )}
 
             <TouchableOpacity style={styles.signupLink} onPress={() => navigation.navigate('SignUp')}>
               <Text style={styles.signupLinkText}>
@@ -257,6 +278,11 @@ const styles = StyleSheet.create({
     color: C.text,
     fontSize: 15,
     fontWeight: '600',
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
+    marginTop: 12,
   },
   signupLink: {
     marginTop: 18,
