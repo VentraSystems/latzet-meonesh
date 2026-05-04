@@ -284,6 +284,14 @@ export default function SettingsScreen({ navigation }: any) {
         <Text style={styles.sectionTitle}>{t.settings.appSettings}</Text>
 
         <View style={styles.card}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Analytics')}>
+            <Text style={styles.menuIcon}>📊</Text>
+            <Text style={styles.menuText}>{t.settings.reports}</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
           <TouchableOpacity style={styles.menuItem} onPress={handleHelp}>
             <Text style={styles.menuIcon}>❓</Text>
             <Text style={styles.menuText}>{t.settings.help}</Text>

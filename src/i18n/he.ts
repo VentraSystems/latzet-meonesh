@@ -302,6 +302,7 @@ const he: Translations = {
     pushDesc: 'קבל התראות כשהילד מגיש משימות',
     notificationNote: '💡 התראות עוזרות לך להישאר מעודכן בפעילות הילד',
     appSettings: '⚙️ הגדרות אפליקציה',
+    reports: 'דוחות וניתוח',
     help: 'עזרה ותמיכה',
     about: 'אודות האפליקציה',
     privacy: 'מדיניות פרטיות',

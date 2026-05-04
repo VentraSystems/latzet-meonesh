@@ -266,26 +266,12 @@ export default function ParentHomeScreen({ navigation }: any) {
 
         <TouchableOpacity
           style={styles.primaryButtonWrapper}
-          onPress={() => navigation.navigate('Analytics')}
-          activeOpacity={0.85}
-        >
-          <LinearGradient colors={['#2d1b4e', '#4a2080']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryButtonText}>{t.parentHome.reports}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.primaryButtonWrapper}
           onPress={() => navigation.navigate('ParentWallet')}
           activeOpacity={0.85}
         >
           <LinearGradient colors={['#F39C12', '#F1C40F']} style={styles.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Text style={[styles.primaryButtonText, { color: '#1a1a2e' }]}>💰 {t.parentHome.walletRewards}</Text>
           </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Settings')} activeOpacity={0.85}>
-          <Text style={styles.secondaryButtonText}>{t.parentHome.settings}</Text>
         </TouchableOpacity>
       </View>
 
@@ -393,15 +379,6 @@ const styles = StyleSheet.create({
   primaryButtonWrapper: { borderRadius: R, overflow: 'hidden', ...shadowSm },
   primaryButton: { padding: 17, alignItems: 'center' },
   primaryButtonText: { color: C.text, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    padding: 16,
-    borderRadius: R,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  secondaryButtonText: { color: C.textMed, fontSize: 15, fontWeight: '600' },
 
   footer: { alignItems: 'center', padding: 24, paddingTop: 12, marginBottom: 20 },
   footerText: { fontSize: 11, color: C.textLow },

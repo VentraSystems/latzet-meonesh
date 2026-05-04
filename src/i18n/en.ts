@@ -300,6 +300,7 @@ const en = {
     pushDesc: 'Get notified when your child submits tasks',
     notificationNote: "💡 Notifications help you stay updated on your child's activity",
     appSettings: '⚙️ App Settings',
+    reports: 'Reports & Analytics',
     help: 'Help & Support',
     about: 'About the App',
     privacy: 'Privacy Policy',
