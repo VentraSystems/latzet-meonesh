@@ -6,9 +6,11 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { redeemReward, WalletTransaction, WalletReward, DEFAULT_WALLET_CONFIG } from '../../utils/wallet';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function ChildWalletScreen({ navigation }: any) {
   const { user, linkedUserId } = useAuth();
+  const { t } = useLanguage();
   const [balance, setBalance] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -46,14 +48,14 @@ export default function ChildWalletScreen({ navigation }: any) {
 
   const handleRedeem = async (reward: WalletReward) => {
     if (balance < reward.cost) {
-      showAlert('Not enough coins', `You need ${reward.cost - balance} more coins`);
+      showAlert(t.wallet.notEnoughTitle, t.wallet.notEnoughMsg.replace('{n}', String(reward.cost - balance)));
       return;
     }
     const result = await redeemReward(user!.uid, reward);
     if (result.success) {
-      showAlert('Request sent! 🎉', 'Your parent will fulfill this reward soon');
+      showAlert(t.wallet.requestSentTitle + ' 🎉', t.wallet.requestSentMsg);
     } else {
-      showAlert('Error', result.error || 'Could not redeem');
+      showAlert(t.common.error, result.error || t.wallet.redeemError);
     }
   };
 

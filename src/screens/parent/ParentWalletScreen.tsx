@@ -6,9 +6,11 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { fulfillRedemption, WalletReward, DEFAULT_WALLET_CONFIG } from '../../utils/wallet';
 import { showAlert } from '../../utils/alert';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function ParentWalletScreen({ navigation }: any) {
   const { user, linkedUserId } = useAuth();
+  const { t } = useLanguage();
   const [config, setConfig] = useState(DEFAULT_WALLET_CONFIG);
   const [childBalance, setChildBalance] = useState(0);
   const [childTotalEarned, setChildTotalEarned] = useState(0);
@@ -58,7 +60,7 @@ export default function ParentWalletScreen({ navigation }: any) {
   const handleFulfill = async (redemption: any) => {
     if (!linkedUserId) return;
     await fulfillRedemption(linkedUserId, redemption.id);
-    showAlert('✅ Fulfilled!', `You gave "${redemption.rewardName}" to your child!`);
+    showAlert('✅ ' + t.wallet.fulfilledTitle, t.wallet.fulfilledMsg.replace('{name}', redemption.rewardName));
   };
 
   const handleAddReward = () => {
@@ -102,20 +104,20 @@ export default function ParentWalletScreen({ navigation }: any) {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>💰 Kid Wallet</Text>
+        <Text style={styles.headerTitle}>{t.wallet.headerTitle}</Text>
         {linkedUserId && (
           <View style={styles.childStats}>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{childBalance}</Text>
-              <Text style={styles.statLabel}>Balance 🪙</Text>
+              <Text style={styles.statLabel}>{t.wallet.balance} 🪙</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{childTotalEarned}</Text>
-              <Text style={styles.statLabel}>Total Earned</Text>
+              <Text style={styles.statLabel}>{t.wallet.totalEarned}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{pendingRedemptions.length}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+              <Text style={styles.statLabel}>{t.wallet.pending}</Text>
             </View>
           </View>
         )}
@@ -124,7 +126,7 @@ export default function ParentWalletScreen({ navigation }: any) {
       {/* Pending Redemptions */}
       {pendingRedemptions.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⏳ Redemption Requests</Text>
+          <Text style={styles.sectionTitle}>⏳ {t.wallet.redemptionRequests}</Text>
           {pendingRedemptions.map((r) => (
             <View key={r.id} style={styles.redemptionCard}>
               <Text style={styles.redemptionEmoji}>{r.rewardEmoji}</Text>

@@ -1,0 +1,7 @@
+{
+  "NSCameraUsageDescription": "אתגר בריחה משתמש במצלמה כדי שתוכל לצלם תמונת הוכחה בעת השלמת משימה.",
+  "NSPhotoLibraryUsageDescription": "אתגר בריחה זקוק לגישה לגלריית התמונות כדי שתוכל לצרף תמונת הוכחה בעת השלמת משימה.",
+  "NSPhotoLibraryAddUsageDescription": "אתגר בריחה שומר תמונות שבחרת בגלריה שלך.",
+  "NSMicrophoneUsageDescription": "אתגר בריחה אינו משתמש במיקרופון.",
+  "NSUserNotificationsUsageDescription": "אתגר בריחה שולח התראות כדי לעדכן אותך על משימות ואישורים."
+}

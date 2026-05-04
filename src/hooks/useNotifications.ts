@@ -110,7 +110,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     }
 
     if (finalStatus !== 'granted') {
-      alert('הרשאת התראות נדחתה. לא נוכל לשלוח לך עדכונים!');
+      console.log('Notification permission not granted; continuing without push notifications');
       return null;
     }
 

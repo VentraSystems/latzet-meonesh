@@ -81,7 +81,7 @@ export default function QuizScreen({ route, navigation }: Props) {
                           status: 'submitted',
                           submittedAt: new Date(),
                           quizScore: Math.round(percentage),
-                          childNote: `עבר את החידון עם ציון ${Math.round(percentage)}%`
+                          childNote: t.quiz.passNote.replace('{pct}', String(Math.round(percentage)))
                         }
                       : t
                   );

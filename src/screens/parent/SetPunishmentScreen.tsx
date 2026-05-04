@@ -133,7 +133,7 @@ export default function SetPunishmentScreen({ navigation, route }: any) {
         body: JSON.stringify({ grade: childGrade, age: childGrade + 5, childName: childName || (language === 'en' ? 'the child' : 'הילד'), language }),
       });
       const data = await resp.json();
-      if (!data.success || !data.tasks) throw new Error('שגיאה בקבלת הצעות');
+      if (!data.success || !data.tasks) throw new Error(t.setPunishment.errorSuggest);
       setAiSuggestions(data.tasks.map((t: any, i: number) => ({ ...t, _id: `ai-suggest-${Date.now()}-${i}` })));
     } catch {
       showAlert(t.common.error, t.setPunishment.errorSuggest);
